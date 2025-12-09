@@ -1,0 +1,76 @@
+{
+  "orders": [
+    {
+      "buyer": {
+        "name": "Buyer Co"
+      },
+      "items": [
+        {
+          "productId": "p-gns-10",
+          "name": "Groundnut Shell Pellets 10kg",
+          "qty": 200,
+          "pricePerKg": 15.5,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-09",
+              "qty": 200,
+              "batchNumber": "BATCH-20251209-0001"
+            }
+          ],
+          "lineTotal": 3100
+        }
+      ],
+      "totals": {
+        "subtotal": 3100,
+        "tax": 372,
+        "total": 3472
+      },
+      "orderId": "ORD-20251209-0001",
+      "invoiceNumber": "INV-202512-0001",
+      "createdAt": "2025-12-09T07:07:55.803Z",
+      "status": "Placed"
+    },
+    {
+      "buyer": {
+        "name": "Buyer Co"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "scheduled",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-12",
+              "qty": 34,
+              "batchNumber": "BATCH-20251209-0002"
+            },
+            {
+              "date": "2025-12-15",
+              "qty": 33,
+              "batchNumber": "BATCH-20251209-0003"
+            },
+            {
+              "date": "2025-12-18",
+              "qty": 33,
+              "batchNumber": "BATCH-20251209-0004"
+            }
+          ],
+          "lineTotal": 1200
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 144,
+        "total": 1344
+      },
+      "orderId": "ORD-20251209-0002",
+      "invoiceNumber": "INV-202512-0002",
+      "createdAt": "2025-12-09T07:08:44.477Z",
+      "status": "Placed"
+    }
+  ]
+}

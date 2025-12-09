@@ -1,61 +1,109 @@
 import { useEffect, useState } from 'react'
+
 export default function Orders(){
   const [orders,setOrders] = useState([])
-  useEffect(()=>{ fetch('/api/orders').then(r=>r.json()).then(setOrders) },[])
+  const [q,setQ] = useState('')
+  const [selected, setSelected] = useState(null)
+  const [highlight, setHighlight] = useState(null)
+
+  useEffect(()=>{ fetch('/api/orders').then(r=>r.json()).then(data=>{ setOrders(data || []); const params = new URLSearchParams(window.location.search); const h = params.get('highlight'); if(h) setHighlight(h) }) },[])
+
+  const filtered = orders.filter(o => {
+    if(!q) return true
+    const t = q.toLowerCase()
+    return o.orderId.toLowerCase().includes(t) || (o.invoiceNumber||'').toLowerCase().includes(t) || (o.buyer?.name||'').toLowerCase().includes(t)
+  })
+
   return (
-    <div className="container">
-      <header className="header">
-        <div className="brand"><div className="logo">CIC</div><div><h1>Orders</h1><div className="sub">All placed orders</div></div></div>
-        <nav className="nav"><a href="/" className="nav-link">Home</a><a href="/order" className="nav-link">Order</a></nav>
-      </header>
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+        <div>
+          <h2 style={{margin:0}}>Orders</h2>
+          <div className="muted">All orders placed — newest first</div>
+        </div>
 
-      <section className="card">
-        <table className="table">
-          <thead><tr><th>Order ID</th><th>Date</th><th>Total (INR)</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>
-            {orders.slice().reverse().map(o=>(
-              <tr key={o.orderId}>
-                <td>{o.orderId}</td>
-                <td>{o.createdAt?.slice(0,10)}</td>
-                <td>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(o.totals?.total || 0)}</td>
-                <td>{o.status || 'Placed'}</td>
-                <td><button className="btn" onClick={()=> viewOrder(o.orderId)}>View</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <input placeholder="Search order / invoice / buyer" value={q} onChange={e=>setQ(e.target.value)} style={{padding:8,borderRadius:8,border:'1px solid #eef3f7',width:320}}/>
+        </div>
+      </div>
 
-      <div id="orderModalRoot"></div>
+      <div style={{display:'grid',gap:12}}>
+        {filtered.length===0 && <div className="card muted">No orders found</div>}
+        {filtered.slice().reverse().map(o=>{
+          const isHighlighted = highlight && highlight === o.orderId
+          return (
+            <div key={o.orderId} className={`order-card ${isHighlighted ? 'order-highlight' : ''}`} style={{cursor:'pointer'}} onClick={()=> setSelected(o)}>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
+                  <div>
+                    <div style={{fontWeight:700}}>{o.orderId}</div>
+                    <div className="order-meta">{o.createdAt?.slice(0,10)} • {o.buyer?.name || 'Buyer'}</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontWeight:800}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(o.totals?.total || 0)}</div>
+                    <div className="order-meta">Status: {o.status || 'Placed'}</div>
+                  </div>
+                </div>
 
-      <script dangerouslySetInnerHTML={{__html: `
-        window.viewOrder = async (orderId) => {
-          const resp = await fetch('/api/orders');
-          const orders = await resp.json();
-          const o = orders.find(x=>x.orderId===orderId);
-          if(!o) return alert('Not found');
-          // build modal
-          const root = document.getElementById('orderModalRoot');
-          root.innerHTML = '';
-          const div = document.createElement('div');
-          div.className = 'modal';
-          const itemsHtml = o.items.map((it, idx) => {
-            const batches = (it.scheduledBatches||[]).map(b=>\`<div style="font-size:13px;color:#475569">Batch: \${b.batchNumber} • Date: \${b.date} • Qty: \${b.qty}kg</div>\`).join('');
-            return \`<tr><td>\${idx+1}</td><td>\${it.name}</td><td>\${it.qty}</td><td>\${new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(it.pricePerKg)}</td><td>\${new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(it.lineTotal|| (it.pricePerKg*it.qty))}</td></tr>\${batches}\`;
-          }).join('');
-          div.innerHTML = '<div class="modal"><div class="box"><div style="display:flex;justify-content:space-between;align-items:center"><strong>Order '+o.orderId+'</strong><div><button id="downloadInv" class="btn">Download Invoice</button> <button id="closeM" class="btn ghost">Close</button></div></div><div style="margin-top:8px" class="muted">Invoice: '+(o.invoiceNumber||'')+' • Date: '+(o.createdAt?.slice(0,10)||'')+'</div><div style="margin-top:12px"><table class="invoice-table"><thead><tr><th>#</th><th>Description</th><th>Qty(kg)</th><th>Rate/kg</th><th>Line total</th></tr></thead><tbody>'+itemsHtml+'</tbody></table></div><div style="margin-top:12px" class="totals"><div style="display:flex;justify-content:space-between"><div class="muted">Subtotal</div><div>'+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(o.totals.subtotal)+'</div></div><div style="display:flex;justify-content:space-between"><div class="muted">GST (12%)</div><div>'+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(o.totals.tax)+'</div></div><div style="display:flex;justify-content:space-between"><strong>Total</strong><strong>'+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(o.totals.total)+'</strong></div></div></div></div>';
-          root.appendChild(div);
-          document.getElementById('closeM').onclick = ()=> root.innerHTML = '';
-          document.getElementById('downloadInv').onclick = ()=> {
-            // client-side invoice generation using jsPDF:
-            const docScript = \`
-              (function(){ const s = \${JSON.stringify(o)}; const order= s; const jsPDF = window.jspdf.jsPDF; const doc = new jsPDF({unit:'pt',format:'a4'}); let y=40; const left=40; doc.setFontSize(16); doc.setTextColor(11,102,163); doc.text('CIC — Invoice', left, y); y+=22; doc.setFontSize(11); doc.setTextColor(60,64,67); doc.text('Invoice No: '+(order.invoiceNumber||''), left, y); doc.text('Invoice Date: '+(order.createdAt?.slice(0,10)||''), left+300, y); y+=18; doc.setFontSize(10); doc.text('Bill To: Buyer Co', left, y); y+=18; doc.setFontSize(10); doc.text('#', left, y); doc.text('Description', left+40, y); doc.text('Qty(kg)', left+360, y); doc.text('Rate', left+430, y); doc.text('Amount', left+520, y); y+=12; order.items.forEach((it,idx)=>{ doc.text(String(idx+1), left, y); doc.text(it.name, left+40, y); doc.text(String(it.qty), left+360, y); doc.text(String((it.pricePerKg||0).toFixed(2)), left+430, y); const amount = (it.lineTotal || (it.pricePerKg*it.qty)||0); doc.text(String(amount.toFixed(2)), left+520, y); y+=14; (it.scheduledBatches||[]).forEach(b=>{ doc.setFontSize(9); doc.text('Batch: '+b.batchNumber+' • '+b.date+' • '+b.qty+'kg', left+60, y); y+=12; doc.setFontSize(10); }); }); y+=12; doc.text('Subtotal: '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(order.totals.subtotal), left+360, y); y+=14; doc.text('GST (12%): '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(order.totals.tax), left+360, y); y+=16; doc.setFontSize(12); doc.text('Total: '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(order.totals.total), left+360, y); doc.save(order.orderId+'_invoice.pdf'); })();
-            \`;
-            // execute script in page context (quick and dirty)
-            const s = document.createElement('script'); s.innerHTML = docScript; document.body.appendChild(s); document.body.removeChild(s);
-          }
-        }
-      `}} />
+                <div style={{marginTop:8}} className="muted">
+                  Items: {o.items?.length || 0} • Transport: {o.transport?.transportMethod || '-'}
+                </div>
+              </div>
+
+              <div style={{width:120,textAlign:'right'}}>
+                <button className="btn" onClick={(e)=>{ e.stopPropagation(); setSelected(o) }}>View</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Order modal */}
+      {selected && (
+        <div className="modal" onClick={()=> setSelected(null)}>
+          <div className="box" onClick={e=> e.stopPropagation()}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <h3 style={{margin:0}}>{selected.orderId}</h3>
+                <div className="muted" style={{marginTop:6}}>Invoice: {selected.invoiceNumber}</div>
+              </div>
+              <div>
+                {selected.invoiceUrl && <a className="btn" href={selected.invoiceUrl} target="_blank" rel="noreferrer">Download Invoice</a>}
+                <button className="btn ghost" style={{marginLeft:8}} onClick={()=> setSelected(null)}>Close</button>
+              </div>
+            </div>
+
+            <div style={{marginTop:12}}>
+              <table className="invoice-table">
+                <thead><tr><th>#</th><th>Description</th><th>Qty (kg)</th><th>Rate/kg</th><th>Amount</th></tr></thead>
+                <tbody>
+                  {selected.items.map((it,idx)=> (
+                    <tr key={idx}>
+                      <td>{idx+1}</td>
+                      <td>
+                        <div style={{fontWeight:700}}>{it.name}</div>
+                        {it.scheduledBatches && it.scheduledBatches.map((b,bi)=> <div key={bi} className="small">{`Batch: ${b.batchNumber} • ${b.date} • ${b.qty}kg`}</div>)}
+                      </td>
+                      <td style={{textAlign:'right'}}>{it.qty}</td>
+                      <td style={{textAlign:'right'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(it.pricePerKg)}</td>
+                      <td style={{textAlign:'right'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(it.lineTotal || (it.pricePerKg*it.qty))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{display:'flex',justifyContent:'flex-end',marginTop:12}}>
+                <div style={{width:320}}>
+                  <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Subtotal</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.totals.subtotal)}</div></div>
+                  <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Transport</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.transport?.transportCharge || 0)}</div></div>
+                  <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">GST (12%)</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.totals.tax)}</div></div>
+                  <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontWeight:700}}><div>Total</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.totals.total)}</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,54 +1,194 @@
 import fs from 'fs-extra'
 import path from 'path'
-const ORDERS_FILE = path.join(process.cwd(), 'orders.json')
+import puppeteer from 'puppeteer'
+import QRCode from 'qrcode'
 
-function genSeq(key){
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,'')
-  const seqKey = key + today
-  const seq = (Number(fs.existsSync(path.join(process.cwd(), seqKey + '.seq')) ? fs.readFileSync(path.join(process.cwd(), seqKey + '.seq'), 'utf8') : '0') || 0) + 1
-  fs.writeFileSync(path.join(process.cwd(), seqKey + '.seq'), String(seq))
-  return { today, seq }
+const ORDERS_FILE = path.join(process.cwd(), 'orders.json')
+const INVOICE_DIR = path.join(process.cwd(), 'public', 'invoices')
+fs.ensureDirSync(INVOICE_DIR)
+
+function pad(n, width=4){ return String(n).padStart(width,'0') }
+function todayYMD(){ return new Date().toISOString().slice(0,10).replace(/-/g,'') }
+
+async function genBatchNumber(seqBase){
+  const ymd = todayYMD()
+  const seq = Number(await fs.readFile(seqBase).catch(()=>'0')) + 1
+  await fs.writeFile(seqBase, String(seq))
+  return `BATCH-${ymd}-${pad(seq)}`
+}
+
+function splitAndAssignBatches(items){
+  // items: {scheduledBatches? or qty}
+  const seqFile = path.join(process.cwd(), 'global_batch.seq')
+  const assigned = items.map(it => {
+    if(it.scheduledBatches && it.scheduledBatches.length){
+      it.scheduledBatches = it.scheduledBatches.map((b, idx) => ({ ...b, batchNumber: `BATCH-${todayYMD()}-${pad(Math.floor(Math.random()*9000)+1)}` }))
+    } else {
+      it.scheduledBatches = [{ date: new Date().toISOString().slice(0,10), qty: it.qty, batchNumber: `BATCH-${todayYMD()}-${pad(Math.floor(Math.random()*9000)+1)}` }]
+    }
+    it.lineTotal = Number((it.pricePerKg||0) * (it.qty||0))
+    return it
+  })
+  return assigned
+}
+
+function calcTaxes(subtotal){
+  const tax = Math.round(subtotal * 0.12)
+  return { tax, total: subtotal + tax }
+}
+
+async function renderInvoiceToPdf(order){
+  // build HTML
+  const seller = { name:'Cienergy', address:'123 Industrial Park, Pune, Maharashtra', gstin:'27ABCDE1234F2Z5', state:'Maharashtra' }
+  const buyer = order.buyer || { name:'Buyer Co', address:'Unknown', gstin:'', state:'Maharashtra' }
+  const invoiceHtml = buildInvoiceHtml({order, seller, buyer})
+  const filename = `${order.invoiceNumber}.pdf`
+  const outPath = path.join(INVOICE_DIR, filename)
+
+  // launch puppeteer (headless)
+  const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'] })
+  const page = await browser.newPage()
+  await page.setContent(invoiceHtml, { waitUntil: 'networkidle0' })
+  await page.pdf({ path: outPath, format: 'A4', printBackground: true })
+  await browser.close()
+  return `/invoices/${filename}`
+}
+
+function buildInvoiceHtml({order, seller, buyer}){
+  // compute CGST/SGST split if same state, else IGST
+  const sameState = (seller.state && buyer.state && seller.state === buyer.state)
+  const taxLabel = sameState ? 'CGST 6% + SGST 6%' : 'IGST 12%'
+
+  const itemsRows = order.items.map((it, idx) => {
+    const batchesHtml = (it.scheduledBatches||[]).map(b=>`<div style="font-size:12px;color:#475569">Batch: ${b.batchNumber} • ${b.date} • ${b.qty}kg</div>`).join('')
+    return `<tr>
+      <td style="padding:8px;border-bottom:1px solid #eee;">${idx+1}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;">${it.name}<div style="font-size:12px;color:#666">${batchesHtml}</div></td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${it.qty}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${(it.pricePerKg||0).toFixed(2)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${(it.lineTotal||0).toFixed(2)}</td>
+    </tr>`
+  }).join('')
+
+  const html = `
+  <html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Invoice ${order.invoiceNumber}</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;color:#222">
+    <div style="max-width:820px;margin:24px auto;padding:20px;border:1px solid #f0f0f0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h2 style="margin:0;color:#0b66a3">Cienergy</h2>
+          <div style="margin-top:6px">${seller.address}</div>
+          <div style="margin-top:6px">GSTIN: ${seller.gstin}</div>
+        </div>
+        <div style="text-align:right">
+          <h3 style="margin:0">Invoice</h3>
+          <div style="margin-top:6px"><strong>${order.invoiceNumber}</strong></div>
+          <div style="margin-top:6px">Date: ${order.createdAt?.slice(0,10) || new Date().toISOString().slice(0,10)}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-top:16px;padding:12px;background:#fafafa;border-radius:6px">
+        <div>
+          <strong>Bill To</strong>
+          <div>${buyer.name}</div>
+          <div style="font-size:13px;color:#555">${buyer.address || ''}</div>
+          <div style="font-size:13px;color:#555">GSTIN: ${buyer.gstin || '-'}</div>
+        </div>
+        <div style="text-align:right">
+          <div><strong>Order ID:</strong> ${order.orderId}</div>
+          <div style="margin-top:6px"><strong>Transport:</strong> ${order.transport?.transportMethod || '-'} • ${Number(order.transport?.transportCharge||0).toFixed(2)}</div>
+          <div style="margin-top:6px"><strong>Payment:</strong> ${order.paymentTerms || 'As agreed'}</div>
+        </div>
+      </div>
+
+      <table style="width:100%;margin-top:18px;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f7fafc">
+            <th style="padding:10px;text-align:left">#</th>
+            <th style="padding:10px;text-align:left">Description</th>
+            <th style="padding:10px;text-align:right">Qty (kg)</th>
+            <th style="padding:10px;text-align:right">Rate (₹/kg)</th>
+            <th style="padding:10px;text-align:right">Amount (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows}
+        </tbody>
+      </table>
+
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <div style="width:320px">
+          <div style="display:flex;justify-content:space-between;padding:6px 0"><div class="muted">Subtotal</div><div>${order.totals.subtotal.toFixed(2)}</div></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0"><div class="muted">Transport</div><div>${Number(order.transport?.transportCharge||0).toFixed(2)}</div></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0"><div class="muted">${taxLabel}</div><div>${order.totals.tax.toFixed(2)}</div></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;font-weight:700"><div>Total</div><div>${order.totals.total.toFixed(2)}</div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;font-size:13px;color:#555">
+        <div><strong>Notes:</strong> Please pay as per the payment schedule. Bank details: Bank XYZ, A/C 000011112222, IFSC: ABCD0000</div>
+      </div>
+    </div>
+  </body>
+  </html>
+  `
+  return html
 }
 
 export default async function handler(req,res){
   if(req.method === 'GET'){
-    try {
-      const data = await fs.readJson(ORDERS_FILE).catch(()=>({ orders: [] }))
-      res.status(200).json(data.orders || [])
-    } catch(e){ res.status(500).json([]) }
-    return
+    const data = await fs.readJson(ORDERS_FILE).catch(()=> ({ orders: [] }))
+    return res.status(200).json(data.orders || [])
   }
 
   if(req.method === 'POST'){
     try {
       await fs.ensureFile(ORDERS_FILE)
       const raw = await fs.readJson(ORDERS_FILE).catch(()=> ({ orders: [] }))
-      const order = req.body
+
+      const incoming = req.body
       const now = new Date()
       const ymd = now.toISOString().slice(0,10).replace(/-/g,'')
       const seq = (raw.orders.length || 0) + 1
-      order.orderId = `ORD-${ymd}-${String(seq).padStart(4,'0')}`
-      order.invoiceNumber = `INV-${now.toISOString().slice(0,7).replace('-','')}-${String(seq).padStart(4,'0')}`
-      // generate batch numbers
-      order.items = (order.items || []).map((it, idx) => {
-        const s = genSeq('batch_seq_')
-        const scheduled = (it.scheduledBatches || []).map((b, bi)=> ({ ...b, batchNumber: `BATCH-${s.today}-${String(s.seq + bi).padStart(4,'0')}` }))
-        if(scheduled.length) it.scheduledBatches = scheduled
-        else it.scheduledBatches = [{ date: now.toISOString().slice(0,10), qty: it.qty, batchNumber: `BATCH-${s.today}-${String(s.seq).padStart(4,'0')}` }]
-        it.lineTotal = (it.pricePerKg || 0) * (it.qty || 0)
-        return it
-      })
-      order.createdAt = now.toISOString()
-      order.totals = order.totals || { subtotal: order.items.reduce((s,i)=> s + (i.lineTotal||0), 0) }
-      order.totals.tax = Math.round(order.totals.subtotal*0.12)
-      order.totals.total = order.totals.subtotal + order.totals.tax
-      order.status = 'Placed'
+      const orderId = `ORD-${ymd}-${pad(seq)}`
+      const invoiceNumber = `INV-${now.toISOString().slice(0,7).replace('-','')}-${pad(seq)}`
+
+      // assign batches & compute line totals
+      const items = splitAndAssignBatches(incoming.items || [])
+      // compute subtotal and totals including transport
+      const subtotal = items.reduce((s,i)=> s + (i.lineTotal||0), 0)
+      const transportCharge = Number((incoming.transport && incoming.transport.transportCharge) || 0)
+      const taxable = subtotal + transportCharge
+      const tax = Math.round(taxable * 0.12)
+      const total = taxable + tax
+
+      const order = {
+        ...incoming,
+        orderId, invoiceNumber,
+        items,
+        createdAt: now.toISOString(),
+        transport: incoming.transport || {},
+        totals: { subtotal, tax, total },
+        status: 'Placed'
+      }
+
       raw.orders.push(order)
       await fs.writeJson(ORDERS_FILE, raw, { spaces: 2 })
-      res.status(201).json({ orderId: order.orderId, invoiceNumber: order.invoiceNumber })
+
+      // render invoice PDF
+      const invoiceUrl = await renderInvoiceToPdf(order)
+
+      return res.status(201).json({ orderId, invoiceNumber, invoiceUrl })
     } catch(e){
       console.error(e)
-      res.status(500).json({ error: 'failed to save order' })
+      return res.status(500).send('Failed to create order: ' + (e.message || e))
     }
   }
+
+  res.setHeader('Allow', ['GET','POST'])
+  res.status(405).end('Method not allowed')
 }

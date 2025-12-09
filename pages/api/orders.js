@@ -37,6 +37,86 @@ function calcTaxes(subtotal){
   return { tax, total: subtotal + tax }
 }
 
+// ------------------------------
+// PAYMENT SCHEDULE
+// ------------------------------
+function computePaymentScheduleForItem(item) {
+  const total = Number(((item.qty || 0) * (item.pricePerKg || 0)).toFixed(2))
+  const plan = item.paymentPlan || { type: 'full' }
+  const batches = item.scheduledBatches || []
+
+  const firstBatchDate = batches.length ? new Date(batches[0].date) : new Date()
+  const anchor = new Date(firstBatchDate)
+  anchor.setDate(anchor.getDate() - (plan.firstPaymentOffsetDays || 0))
+
+  if (plan.type === 'full') {
+    const last = batches.length ? new Date(batches[batches.length - 1].date) : new Date()
+    return [{
+      itemId: item.productId,
+      dueDate: last.toISOString().slice(0, 10),
+      amount: total,
+      note: 'Full payment on delivery'
+    }]
+  }
+
+  if (plan.type === 'deposit') {
+    const pct = Number(plan.depositPct || 50)
+    const deposit = Number((total * (pct / 100)).toFixed(2))
+    const balance = Number((total - deposit).toFixed(2))
+    const last = batches.length ? new Date(batches[batches.length - 1].date) : new Date()
+    return [
+      {
+        itemId: item.productId,
+        dueDate: anchor.toISOString().slice(0, 10),
+        amount: deposit,
+        note: `Deposit ${pct}%`
+      },
+      {
+        itemId: item.productId,
+        dueDate: last.toISOString().slice(0, 10),
+        amount: balance,
+        note: 'Balance on delivery'
+      }
+    ]
+  }
+
+  if (plan.type === 'inst') {
+    const n = Math.max(2, Number(plan.instCount || 3))
+    const base = Math.floor((total / n) * 100) / 100
+    const remainder = Number((total - base * n).toFixed(2))
+    const out = []
+    for (let i = 0; i < n; i++) {
+      const d = new Date(anchor)
+      d.setMonth(d.getMonth() + i)
+      out.push({
+        itemId: item.productId,
+        dueDate: d.toISOString().slice(0, 10),
+        amount: Number(((i === 0 ? base + remainder : base)).toFixed(2)),
+        note: `Installment ${i + 1} of ${n}`
+      })
+    }
+    return out
+  }
+
+  return [{
+    itemId: item.productId,
+    dueDate: anchor.toISOString().slice(0, 10),
+    amount: total,
+    note: 'Payment'
+  }]
+}
+
+function mergePayments(payList) {
+  const map = {}
+  payList.forEach(p => {
+    const k = p.dueDate
+    if (!map[k]) map[k] = { dueDate: p.dueDate, amount: 0, details: [] }
+    map[k].amount += Number(p.amount || 0)
+    map[k].details.push({ note: p.note || '', itemId: p.itemId, amount: Number(p.amount || 0) })
+  })
+  return Object.values(map)
+}
+
 async function renderInvoiceToPdf(order){
   // build HTML
   const seller = { name:'Cienergy', address:'123 Industrial Park, Pune, Maharashtra', gstin:'27ABCDE1234F2Z5', state:'Maharashtra' }
@@ -166,6 +246,10 @@ export default async function handler(req,res){
       const tax = Math.round(taxable * 0.12)
       const total = taxable + tax
 
+      // compute payment schedule from paymentPlan on each item
+      const paymentsRaw = items.flatMap(it => computePaymentScheduleForItem(it))
+      const payments = mergePayments(paymentsRaw)
+
       const order = {
         ...incoming,
         orderId, invoiceNumber,
@@ -173,6 +257,7 @@ export default async function handler(req,res){
         createdAt: now.toISOString(),
         transport: incoming.transport || {},
         totals: { subtotal, tax, total },
+        payments,
         status: 'Placed'
       }
 

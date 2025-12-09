@@ -3,6 +3,8 @@ import ProductCard from '../components/ProductCard'
 import Cart from '../components/Cart'
 import ScheduleModal from '../components/ScheduleModal'
 
+const AUTO_REDIRECT_MS = 6000 // 6 seconds; change if required
+
 export default function OrderPage(){
   const [products, setProducts] = useState([])
   const [region, setRegion] = useState('north')
@@ -10,7 +12,7 @@ export default function OrderPage(){
   const [feedstock, setFeedstock] = useState('')
   const [cart, setCart] = useState({})
   const [modalFor, setModalFor] = useState(null)
-  const [checkoutState, setCheckoutState] = useState({loading:false, recentOrder:null, showToast:false})
+  const [checkoutState, setCheckoutState] = useState({loading:false, recentOrder:null})
 
   useEffect(()=>{ fetch('/api/products').then(r=>r.json()).then(setProducts) },[])
 
@@ -28,8 +30,11 @@ export default function OrderPage(){
 
   async function checkout(transportPayload = { transportMethod:'standard', transportCharge:600, deliveryRegion:region }){
     const items = Object.entries(cart).map(([id, it])=> ({ productId:id, name:it.name, qty:it.qty, pricePerKg:it.pricePerKg, mode:it.mode, scheduledBatches: it.scheduledBatches || [] }))
-    if(items.length===0) return alert('Cart empty')
-    setCheckoutState({loading:true, recentOrder:null, showToast:false})
+    if(items.length===0) {
+      if(window.enqueueNotification) window.enqueueNotification('Cart is empty', { variant:'error' })
+      return
+    }
+    setCheckoutState({loading:true, recentOrder:null})
     const subtotal = items.reduce((s,i)=> s + (i.pricePerKg||0)*i.qty, 0)
     const taxable = subtotal + Number(transportPayload.transportCharge||0)
     const tax = Math.round(taxable*0.12)
@@ -42,20 +47,22 @@ export default function OrderPage(){
       const res = await fetch('/api/orders', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload) })
       if(res.status === 201){
         const d = await res.json()
-        // clear cart and persist minimal
         localStorage.removeItem('pn_cart'); setCart({})
-        setCheckoutState({ loading:false, recentOrder: d, showToast:true })
-        // auto-hide toast after 3.5s
-        setTimeout(()=> setCheckoutState(s=>({...s, showToast:false})), 3500)
-        // scroll to orders page after short delay so user can click invoice if desired
-        // keep page open; the Orders page will be highlighted on view
+        setCheckoutState({loading:false, recentOrder: d})
+        if(window.enqueueNotification) window.enqueueNotification(`Order placed — ${d.orderId}`, { ttl: 3500 })
+        // auto-redirect after short delay; keep modal visible so user can click invoice
+        setTimeout(()=> {
+          // navigate to orders page and highlight order
+          window.location.href = `/orders?highlight=${encodeURIComponent(d.orderId)}`
+        }, AUTO_REDIRECT_MS)
       } else {
         const txt = await res.text()
         throw new Error(txt || 'Order failed')
       }
     } catch(err){
-      setCheckoutState({loading:false, recentOrder:null, showToast:false})
-      alert('Checkout error: '+ (err.message || err))
+      setCheckoutState({loading:false, recentOrder:null})
+      if(window.enqueueNotification) window.enqueueNotification('Checkout failed', { variant:'error', ttl:4000 })
+      console.error('Checkout error', err)
     }
   }
 
@@ -116,37 +123,26 @@ export default function OrderPage(){
 
       {modalFor && <ScheduleModal product={modalFor} onClose={()=>setModalFor(null)} onSave={(payload)=>{ addScheduled(modalFor.id, payload); setModalFor(null) }} />}
 
-      {/* Success toast */}
-      {checkoutState.showToast && checkoutState.recentOrder && (
-        <div className="toast">
-          Order placed ✓ — {checkoutState.recentOrder.orderId}
-        </div>
-      )}
-
-      {/* Success panel/modal - persistent until close */}
+      {/* persistent success modal while recentOrder exists */}
       {checkoutState.recentOrder && (
         <div className="modal" style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div className="box">
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
-                <h3 style={{margin:0}}>Order placed successfully</h3>
+                <h3 style={{margin:0}}>Order placed</h3>
                 <div className="muted" style={{marginTop:6}}>Order ID: <strong>{checkoutState.recentOrder.orderId}</strong></div>
                 <div className="muted" style={{marginTop:6}}>Invoice: <strong>{checkoutState.recentOrder.invoiceNumber}</strong>
                   {checkoutState.recentOrder.invoiceUrl && <a className="invoice-link" href={checkoutState.recentOrder.invoiceUrl} target="_blank" rel="noreferrer">Download PDF</a>}
                 </div>
               </div>
               <div>
-                <button className="btn" onClick={()=>{ setCheckoutState({loading:false, recentOrder:null, showToast:false}); window.location.href='/orders' }}>Go to Orders</button>
-                <button className="btn ghost" style={{marginLeft:8}} onClick={()=> setCheckoutState({loading:false, recentOrder:null, showToast:false})}>Close</button>
+                <button className="btn" onClick={()=>{ window.location.href = `/orders?highlight=${encodeURIComponent(checkoutState.recentOrder.orderId)}` }}>Go to Orders</button>
+                <button className="btn ghost" style={{marginLeft:8}} onClick={()=> setCheckoutState({loading:false, recentOrder:null})}>Close</button>
               </div>
             </div>
 
             <div style={{marginTop:12}}>
-              <strong>Next steps</strong>
-              <ul style={{marginTop:8}}>
-                <li className="small">Download the invoice and share with finance.</li>
-                <li className="small">Supplier (Cienergy) will confirm batch dispatch within lead times.</li>
-              </ul>
+              <div className="small">You will be redirected to Orders in a few seconds.</div>
             </div>
           </div>
         </div>

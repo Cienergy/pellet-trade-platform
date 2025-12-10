@@ -139,11 +139,6 @@ export default function OrderPage(){
               </div>
               <div className="muted" style={{marginTop:'0.5rem',fontSize:'1rem'}}>
                 Invoice: <strong style={{color:'#111827'}}>{checkoutState.recentOrder.invoiceNumber}</strong>
-                {checkoutState.recentOrder.invoiceUrl && (
-                  <a className="invoice-link" href={checkoutState.recentOrder.invoiceUrl} target="_blank" rel="noreferrer" style={{marginLeft:'0.5rem'}}>
-                    Download PDF
-                  </a>
-                )}
               </div>
             </div>
 

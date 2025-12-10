@@ -9,6 +9,7 @@ export default function Orders(){
   const [stripeEnabled, setStripeEnabled] = useState(false)
   const [loadingPay, setLoadingPay] = useState(false)
   const [loadingReceipt, setLoadingReceipt] = useState(false)
+  const [loadingInvoice, setLoadingInvoice] = useState(false)
 
   useEffect(()=>{
     async function load() {
@@ -122,6 +123,80 @@ export default function Orders(){
     }
   }
 
+  // Client-side invoice generation (jsPDF)
+  async function downloadInvoice(order){
+    if(!order) return
+    setLoadingInvoice(true)
+    try {
+      if(!window.jspdf || !window.jspdf.jsPDF){
+        await new Promise((resolve, reject)=>{
+          const s = document.createElement('script')
+          s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+          s.onload = resolve
+          s.onerror = reject
+          document.head.appendChild(s)
+        })
+      }
+      const { jsPDF } = window.jspdf
+      const doc = new jsPDF({ unit:'pt', format:'a4' })
+      let y = 50
+      const left = 50
+
+      doc.setFontSize(18); doc.setTextColor(11,102,163)
+      doc.text('Invoice', left, y); y += 20
+      doc.setFontSize(12); doc.setTextColor(60,64,67)
+      doc.text(`Order: ${order.orderId}`, left, y); y += 14
+      doc.text(`Invoice: ${order.invoiceNumber || '-'}`, left, y); y += 14
+      doc.text(`Date: ${order.createdAt?.slice(0,10) || ''}`, left, y); y += 20
+
+      doc.setFontSize(11); doc.text('Items', left, y); y += 12
+      order.items.forEach((it, idx) => {
+        doc.text(`${idx+1}. ${it.name}`, left, y)
+        doc.text(`${it.qty} kg × ${Number(it.pricePerKg||0).toFixed(2)} = ${Number(it.lineTotal||it.qty*it.pricePerKg||0).toFixed(2)}`, left+200, y)
+        y += 12
+        ;(it.scheduledBatches||[]).forEach(b=>{
+          doc.setFontSize(10)
+          doc.text(`• Batch ${b.batchNumber || ''} • ${b.date} • ${b.qty}kg`, left+16, y)
+          doc.setFontSize(11)
+          y += 11
+        })
+        y += 6
+      })
+
+      y += 6
+      doc.setFontSize(11)
+      doc.text(`Transport: ${order.transport?.transportMethod || '-'} • ${Number(order.transport?.transportCharge||0).toFixed(2)}`, left, y); y += 14
+      doc.text(`Subtotal: ${Number(order.totals?.subtotal||0).toFixed(2)}`, left, y); y += 14
+      doc.text(`GST (12%): ${Number(order.totals?.tax||0).toFixed(2)}`, left, y); y += 14
+      doc.setFontSize(12); doc.text(`Total: ${Number(order.totals?.total||0).toFixed(2)}`, left, y); y += 20
+
+      if(order.payments && order.payments.length){
+        doc.setFontSize(11); doc.text('Payment schedule', left, y); y += 12
+        order.payments.forEach((p, idx)=>{
+          doc.text(`${idx+1}. ${p.dueDate} — ₹${Number(p.amount||0).toFixed(2)} ${p.status==='paid'?'(paid)':''}`, left, y)
+          if(p.details && p.details.length){
+            doc.setFontSize(10)
+            p.details.forEach(d=>{
+              doc.text(`• ${d.note || ''} ${d.itemId ? `(${d.itemId})` : ''}`, left+16, y+11)
+              y += 11
+            })
+            doc.setFontSize(11)
+            y += 2
+          } else {
+            y += 12
+          }
+        })
+      }
+
+      doc.save(`${order.orderId}_invoice.pdf`)
+    } catch(e){
+      console.error('download invoice failed', e)
+      window.enqueueNotification && window.enqueueNotification('Failed to download invoice', { variant:'error' })
+    } finally {
+      setLoadingInvoice(false)
+    }
+  }
+
   // Download receipt for a paid payment
   async function downloadReceipt(order, payment){
     if(!payment || payment.status !== 'paid') return
@@ -217,7 +292,7 @@ export default function Orders(){
                 <div className="muted" style={{marginTop:6}}>Invoice: {selected.invoiceNumber}</div>
               </div>
               <div>
-                {selected.invoiceUrl && <a className="btn" href={selected.invoiceUrl} target="_blank" rel="noreferrer">Download Invoice</a>}
+                <button className="btn" onClick={()=> downloadInvoice(selected)} disabled={loadingInvoice}>Download Invoice</button>
                 <button className="btn ghost" style={{marginLeft:8}} onClick={()=> setSelected(null)}>Close</button>
               </div>
             </div>

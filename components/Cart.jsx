@@ -18,43 +18,53 @@ export default function Cart({ cart = {}, onRemove = ()=>{}, onEdit = ()=>{}, on
   const total = taxable + tax
 
   return (
-    <div className="card">
-      <h4>Cart & Shipping</h4>
+    <div className="card" style={{position:'sticky',top:'calc(1.5rem + 80px)'}}>
+      <h4 style={{marginTop:0,marginBottom:'1.5rem',fontSize:'1.25rem',color:'#111827'}}>Cart & Shipping</h4>
 
-      <div style={{marginTop:8}}>
+      <div style={{marginBottom:'1.5rem'}}>
         <label>Delivery region</label>
-        <select value={region} onChange={e=> setRegion(e.target.value)} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #eef3f7'}}>
+        <select value={region} onChange={e=> setRegion(e.target.value)}>
           <option value="north">North</option><option value="east">East</option><option value="west">West</option><option value="south">South</option>
         </select>
       </div>
 
-      <div style={{marginTop:12, maxHeight:260, overflow:'auto'}}>
-        {items.length===0 && <div className="muted">Cart is empty</div>}
+      <div style={{maxHeight:280, overflowY:'auto',marginBottom:'1.5rem',border:'1px solid #e5e7eb',borderRadius:'0.75rem',padding:'0.5rem'}}>
+        {items.length===0 && <div className="muted" style={{textAlign:'center',padding:'2rem'}}>Cart is empty</div>}
         {items.map(([id,it])=>(
           <div className="cart-row" key={id}>
-            <div>
-              <strong>{it.name}</strong>
-              <div className="small">{it.mode === 'immediate' ? 'Immediate' : 'Scheduled'}</div>
-              <div className="small">Qty: {it.qty} kg</div>
-              {it.scheduledBatches && it.scheduledBatches.length>0 && <div className="small">{it.scheduledBatches.map(b=>`${b.date} × ${b.qty}kg`).join('; ')}</div>}
+            <div style={{flex:1}}>
+              <strong style={{display:'block',marginBottom:'0.25rem',color:'#111827'}}>{it.name}</strong>
+              <div className="small" style={{marginBottom:'0.25rem'}}>
+                <span className="badge" style={{fontSize:'0.7rem',padding:'0.125rem 0.5rem'}}>
+                  {it.mode === 'immediate' ? 'Immediate' : 'Scheduled'}
+                </span>
+              </div>
+              <div className="small" style={{marginBottom:'0.25rem'}}>Qty: <strong>{it.qty} kg</strong></div>
+              {it.scheduledBatches && it.scheduledBatches.length>0 && (
+                <div className="small" style={{color:'#6b7280',fontSize:'0.75rem'}}>
+                  {it.scheduledBatches.map((b,i)=>(
+                    <div key={i} style={{marginTop:'0.25rem'}}>📅 {b.date} × {b.qty}kg</div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div style={{textAlign:'right'}}>
-              <input className="small" type="number" min="0" value={it.qty} onChange={(e)=> onEdit(id, Number(e.target.value)||0)} style={{width:90,padding:6,borderRadius:6,border:'1px solid #eef3f7'}}/>
-              <div style={{marginTop:8}}>
-                <button className="btn ghost" onClick={()=> onRemove(id)}>Remove</button>
+            <div style={{textAlign:'right',minWidth:'100px'}}>
+              <input type="number" min="0" value={it.qty} onChange={(e)=> onEdit(id, Number(e.target.value)||0)} style={{width:80,padding:'0.375rem',marginBottom:'0.5rem',fontSize:'0.875rem'}}/>
+              <div>
+                <button className="btn ghost" onClick={()=> onRemove(id)} style={{padding:'0.375rem 0.75rem',fontSize:'0.8125rem'}}>Remove</button>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{marginTop:10}}>
+      <div style={{marginBottom:'1.5rem'}}>
         <label>Transport method</label>
         <select value={transport.method} onChange={e=> {
           const m = e.target.value
           const base = m === 'express' ? 1200 : m === 'economy' ? 300 : {standard:600}[m] || 600
           setTransport({method:m, charge: base})
-        }} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #eef3f7'}}>
+        }}>
           <option value="standard">Standard (default)</option>
           <option value="express">Express (+ higher charge)</option>
           <option value="economy">Economy (+ lower charge)</option>
@@ -62,15 +72,20 @@ export default function Cart({ cart = {}, onRemove = ()=>{}, onEdit = ()=>{}, on
       </div>
 
       <div className="totals">
-        <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Subtotal</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(subtotal)}</div></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Transport</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(transportCharge)}</div></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Taxable total</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(taxable)}</div></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">GST (12%)</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(tax)}</div></div>
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:8}}><strong>Total</strong><strong>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(total)}</strong></div>
+        <div><div className="muted">Subtotal</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(subtotal)}</div></div>
+        <div><div className="muted">Transport</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(transportCharge)}</div></div>
+        <div><div className="muted">Taxable total</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(taxable)}</div></div>
+        <div><div className="muted">GST (12%)</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(tax)}</div></div>
+        <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'2px solid #d1d5db'}}>
+          <div style={{fontSize:'1.125rem',fontWeight:800,color:'#0b66a3'}}>Total</div>
+          <div style={{fontSize:'1.25rem',fontWeight:800,color:'#0b66a3'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(total)}</div>
+        </div>
       </div>
 
-      <div style={{marginTop:12,display:'flex',gap:8}}>
-        <button className="btn" onClick={()=> onCheckout({ transportMethod: transport.method, transportCharge, deliveryRegion:region })}>Checkout</button>
+      <div style={{marginTop:'1.5rem'}}>
+        <button className="btn" onClick={()=> onCheckout({ transportMethod: transport.method, transportCharge, deliveryRegion:region })} style={{width:'100%',padding:'0.75rem',fontSize:'1rem',fontWeight:700}}>
+          Checkout →
+        </button>
       </div>
     </div>
   )

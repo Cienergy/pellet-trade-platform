@@ -93,23 +93,24 @@ export default function ScheduleModal({ product, onClose, onSave }) {
   return (
     <div className="modal">
       <div className="box">
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <strong>Schedule — {product.name}</strong>
-          <button className="btn ghost" onClick={onClose}>Close</button>
-        </div>
-
-        <div className="muted small" style={{ marginTop: 8 }}>
-          Min order {product.minOrderKg} kg • Lead time {product.leadTimeDays} days
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: "#111827" }}>Schedule — {product.name}</h3>
+            <div className="muted small" style={{ marginTop: "0.5rem" }}>
+              Min order {product.minOrderKg} kg • Lead time {product.leadTimeDays} days
+            </div>
+          </div>
+          <button className="btn ghost" onClick={onClose} style={{ padding: "0.5rem 1rem" }}>Close</button>
         </div>
 
         {/* Quantity + Batches */}
-        <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
           <div style={{ flex: 1 }}>
             <label>Total quantity (kg)</label>
             <input type="number" value={qty} onChange={e => setQty(Number(e.target.value) || 0)} />
           </div>
 
-          <div style={{ width: 160 }}>
+          <div style={{ width: "180px" }}>
             <label># Batches</label>
             <select value={batches} onChange={e => setBatches(Number(e.target.value))}>
               <option>1</option><option>2</option><option>3</option><option>4</option>
@@ -118,37 +119,40 @@ export default function ScheduleModal({ product, onClose, onSave }) {
         </div>
 
         {/* Batch rows */}
-        <div style={{ marginTop: 10 }}>
-          <div className="muted small">Suggested schedule (editable)</div>
-          {batchRows.map((b, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <input
-                type="date"
-                value={b.date}
-                onChange={e => {
-                  const nr = [...batchRows]
-                  nr[i].date = e.target.value
-                  setBatchRows(nr)
-                }}
-                style={{ flex: 1 }}
-              />
-              <input
-                type="number"
-                value={b.qty}
-                onChange={e => {
-                  const nr = [...batchRows]
-                  nr[i].qty = Number(e.target.value) || 0
-                  setBatchRows(nr)
-                }}
-                style={{ width: 120 }}
-              />
-              <div className="small" style={{ width: 120 }}>ETA: {b.date}</div>
-            </div>
-          ))}
+        <div style={{ marginBottom: "1.5rem" }}>
+          <label style={{ marginBottom: "0.75rem", display: "block" }}>Suggested schedule (editable)</label>
+          <div style={{ border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "0.75rem", background: "#f9fafb" }}>
+            {batchRows.map((b, i) => (
+              <div key={i} style={{ display: "flex", gap: "0.75rem", marginBottom: "0.75rem", alignItems: "center" }}>
+                <input
+                  type="date"
+                  value={b.date}
+                  onChange={e => {
+                    const nr = [...batchRows]
+                    nr[i].date = e.target.value
+                    setBatchRows(nr)
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="number"
+                  value={b.qty}
+                  onChange={e => {
+                    const nr = [...batchRows]
+                    nr[i].qty = Number(e.target.value) || 0
+                    setBatchRows(nr)
+                  }}
+                  style={{ width: "120px" }}
+                  placeholder="Qty (kg)"
+                />
+                <div className="small" style={{ width: "140px", fontWeight: 600, color: "#0b66a3" }}>📅 ETA: {b.date}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Payment method */}
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginBottom: "1.5rem" }}>
           <label>Payment option</label>
           <select value={payOpt} onChange={e => setPayOpt(e.target.value)}>
             <option value="full">Full on delivery</option>
@@ -158,34 +162,34 @@ export default function ScheduleModal({ product, onClose, onSave }) {
         </div>
 
         {payOpt === 'deposit' && (
-          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+          <div style={{ marginBottom: "1.5rem", display: "flex", gap: "1rem", padding: "1rem", background: "#f9fafb", borderRadius: "0.75rem", border: "1px solid #e5e7eb" }}>
             <div style={{ flex: 1 }}>
               <label>Deposit %</label>
-              <input type="number" value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} />
+              <input type="number" value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} min="1" max="99" />
             </div>
-            <div style={{ width: 160 }}>
+            <div style={{ width: "200px" }}>
               <label>First payment offset (days)</label>
-              <input type="number" value={firstPaymentOffsetDays} onChange={e => setFirstPaymentOffsetDays(Number(e.target.value))} />
+              <input type="number" value={firstPaymentOffsetDays} onChange={e => setFirstPaymentOffsetDays(Number(e.target.value))} min="0" />
             </div>
           </div>
         )}
 
         {payOpt === 'inst' && (
-          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+          <div style={{ marginBottom: "1.5rem", display: "flex", gap: "1rem", padding: "1rem", background: "#f9fafb", borderRadius: "0.75rem", border: "1px solid #e5e7eb" }}>
             <div style={{ flex: 1 }}>
               <label># Installments</label>
-              <input type="number" value={instCount} onChange={e => setInstCount(Number(e.target.value))} />
+              <input type="number" value={instCount} onChange={e => setInstCount(Number(e.target.value))} min="2" />
             </div>
-            <div style={{ width: 160 }}>
+            <div style={{ width: "200px" }}>
               <label>First payment offset (days)</label>
-              <input type="number" value={firstPaymentOffsetDays} onChange={e => setFirstPaymentOffsetDays(Number(e.target.value))} />
+              <input type="number" value={firstPaymentOffsetDays} onChange={e => setFirstPaymentOffsetDays(Number(e.target.value))} min="0" />
             </div>
           </div>
         )}
 
-        <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
-          <button className="btn" onClick={save}>Add to cart</button>
-          <button className="btn ghost" onClick={onClose}>Cancel</button>
+        <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "2px solid #e5e7eb", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+          <button className="btn ghost" onClick={onClose} style={{ padding: "0.75rem 1.5rem" }}>Cancel</button>
+          <button className="btn" onClick={save} style={{ padding: "0.75rem 1.5rem" }}>Add to cart</button>
         </div>
       </div>
     </div>

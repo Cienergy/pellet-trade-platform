@@ -853,6 +853,158 @@
         }
       ],
       "status": "Completed"
+    },
+    {
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-09",
+              "qty": 100,
+              "batchNumber": "BATCH-20251209-7359"
+            }
+          ],
+          "lineTotal": 1200
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 204,
+        "total": 1904
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "orderId": "ORD-20251209-0018",
+      "invoiceNumber": "INV-202512-0018",
+      "createdAt": "2025-12-09T16:50:31.331Z",
+      "payments": [
+        {
+          "dueDate": "2025-12-09",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ],
+          "status": "paid",
+          "paidAt": "2025-12-09T16:50:45.507Z",
+          "receiptId": "RECEIPT-1765299045507"
+        }
+      ],
+      "status": "Completed"
+    },
+    {
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-10",
+              "qty": 100,
+              "batchNumber": "BATCH-20251210-0318"
+            }
+          ],
+          "lineTotal": 1200
+        },
+        {
+          "productId": "p-cot-20",
+          "name": "Cotton Stalk Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 13.2,
+          "mode": "scheduled",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-13",
+              "qty": 25,
+              "batchNumber": "BATCH-20251210-5519"
+            },
+            {
+              "date": "2025-12-15",
+              "qty": 25,
+              "batchNumber": "BATCH-20251210-5390"
+            },
+            {
+              "date": "2025-12-18",
+              "qty": 25,
+              "batchNumber": "BATCH-20251210-4958"
+            },
+            {
+              "date": "2025-12-21",
+              "qty": 25,
+              "batchNumber": "BATCH-20251210-2207"
+            }
+          ],
+          "lineTotal": 1320
+        }
+      ],
+      "totals": {
+        "subtotal": 2520,
+        "tax": 362,
+        "total": 3382
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "orderId": "ORD-20251210-0019",
+      "invoiceNumber": "INV-202512-0019",
+      "createdAt": "2025-12-10T05:58:10.181Z",
+      "payments": [
+        {
+          "dueDate": "2025-12-10",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ],
+          "status": "paid",
+          "paidAt": "2025-12-10T05:58:31.626Z",
+          "receiptId": "RECEIPT-1765346311626"
+        },
+        {
+          "dueDate": "2025-12-21",
+          "amount": 1320,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-cot-20",
+              "amount": 1320
+            }
+          ],
+          "status": "paid",
+          "paidAt": "2025-12-10T05:58:46.379Z",
+          "receiptId": "RECEIPT-1765346326379"
+        }
+      ],
+      "status": "Completed"
     }
   ]
 }

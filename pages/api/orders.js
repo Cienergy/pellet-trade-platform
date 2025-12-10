@@ -1,10 +1,10 @@
 import fs from 'fs-extra'
 import path from 'path'
-import puppeteer from 'puppeteer'
-import QRCode from 'qrcode'
+// Note: On Vercel we avoid server-side PDF generation (puppeteer) and rely on client-side jsPDF.
 
 const ORDERS_FILE = path.join(process.cwd(), 'orders.json')
 const INVOICE_DIR = path.join(process.cwd(), 'public', 'invoices')
+// For local/dev; on Vercel this is read-only/ephemeral.
 fs.ensureDirSync(INVOICE_DIR)
 
 function pad(n, width=4){ return String(n).padStart(width,'0') }
@@ -115,23 +115,6 @@ function mergePayments(payList) {
     map[k].details.push({ note: p.note || '', itemId: p.itemId, amount: Number(p.amount || 0) })
   })
   return Object.values(map)
-}
-
-async function renderInvoiceToPdf(order){
-  // build HTML
-  const seller = { name:'Cienergy', address:'123 Industrial Park, Pune, Maharashtra', gstin:'27ABCDE1234F2Z5', state:'Maharashtra' }
-  const buyer = order.buyer || { name:'Buyer Co', address:'Unknown', gstin:'', state:'Maharashtra' }
-  const invoiceHtml = buildInvoiceHtml({order, seller, buyer})
-  const filename = `${order.invoiceNumber}.pdf`
-  const outPath = path.join(INVOICE_DIR, filename)
-
-  // launch puppeteer (headless)
-  const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'] })
-  const page = await browser.newPage()
-  await page.setContent(invoiceHtml, { waitUntil: 'networkidle0' })
-  await page.pdf({ path: outPath, format: 'A4', printBackground: true })
-  await browser.close()
-  return `/invoices/${filename}`
 }
 
 function buildInvoiceHtml({order, seller, buyer}){
@@ -258,16 +241,15 @@ export default async function handler(req,res){
         transport: incoming.transport || {},
         totals: { subtotal, tax, total },
         payments,
+        // Skip server PDF; clients will generate invoices via jsPDF
+        invoiceUrl: null,
         status: 'Placed'
       }
 
       raw.orders.push(order)
       await fs.writeJson(ORDERS_FILE, raw, { spaces: 2 })
 
-      // render invoice PDF
-      const invoiceUrl = await renderInvoiceToPdf(order)
-
-      return res.status(201).json({ orderId, invoiceNumber, invoiceUrl })
+      return res.status(201).json({ orderId, invoiceNumber, invoiceUrl: null })
     } catch(e){
       console.error(e)
       return res.status(500).send('Failed to create order: ' + (e.message || e))

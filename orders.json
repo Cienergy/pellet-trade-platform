@@ -1,6 +1,168 @@
 {
   "orders": [
     {
+      "order_id": "ORD-20251210-59060",
+      "invoice_number": "INV-202512-59060",
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "scheduled",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-18",
+              "qty": 100,
+              "batchNumber": "BATCH-20251210-6194"
+            }
+          ],
+          "paymentPlan": null,
+          "lineTotal": 1200
+        }
+      ],
+      "payments": [
+        {
+          "dueDate": "2025-12-18",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ]
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 204,
+        "total": 1904
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "status": "Placed",
+      "invoice_url": null,
+      "created_at": "2025-12-10T09:47:39.060Z"
+    },
+    {
+      "order_id": "ORD-20251210-95290",
+      "invoice_number": "INV-202512-95290",
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-10",
+              "qty": 100,
+              "batchNumber": "BATCH-20251210-2614"
+            }
+          ],
+          "paymentPlan": null,
+          "lineTotal": 1200
+        }
+      ],
+      "payments": [
+        {
+          "dueDate": "2025-12-10",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ]
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 204,
+        "total": 1904
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "status": "Placed",
+      "invoice_url": null,
+      "created_at": "2025-12-10T09:44:55.290Z"
+    },
+    {
+      "order_id": "ORD-20251210-53274",
+      "invoice_number": "INV-202512-53274",
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-10",
+              "qty": 100,
+              "batchNumber": "BATCH-20251210-1250"
+            }
+          ],
+          "paymentPlan": null,
+          "lineTotal": 1200
+        }
+      ],
+      "payments": [
+        {
+          "dueDate": "2025-12-10",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ],
+          "status": "paid",
+          "paidAt": "2025-12-10T09:40:45.997Z",
+          "receiptId": "RECEIPT-1765359645997"
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 204,
+        "total": 1904
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "status": "Completed",
+      "invoice_url": "/invoices/ORD-20251210-53274-1765359780734-ORD-20251210-0019_RECEIPT-1765346311626.pdf",
+      "created_at": "2025-12-10T09:32:33.274Z"
+    },
+    {
       "buyer": {
         "name": "Buyer Co"
       },
@@ -1005,6 +1167,58 @@
         }
       ],
       "status": "Completed"
+    },
+    {
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-10",
+              "qty": 100,
+              "batchNumber": "BATCH-20251210-2784"
+            }
+          ],
+          "lineTotal": 1200
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 204,
+        "total": 1904
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "orderId": "ORD-20251210-0020",
+      "invoiceNumber": "INV-202512-0020",
+      "createdAt": "2025-12-10T08:13:19.126Z",
+      "payments": [
+        {
+          "dueDate": "2025-12-10",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ]
+        }
+      ],
+      "invoiceUrl": null,
+      "status": "Placed"
     }
   ]
 }

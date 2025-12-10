@@ -34,8 +34,12 @@ async function writeOrders(data) {
 }
 
 function findOrder(data, orderId) {
-  return (data.orders || []).find(o => o.orderId === orderId)
-}
+    if(!data || !data.orders) return undefined
+    return (data.orders || []).find(o =>
+      o.orderId === orderId || o.order_id === orderId || o.orderId === (o.order_id) || false
+    )
+  }
+  
 
 // Merge payments by dueDate helper (used to compute aggregated payments if needed)
 function mergePayments(payList) {

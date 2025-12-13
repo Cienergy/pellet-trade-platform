@@ -1,197 +1,74 @@
 // components/ScheduleModal.jsx
-import { useState, useEffect } from 'react'
+import React from 'react';
 
 export default function ScheduleModal({ product, onClose, onSave }) {
-  const [qty, setQty] = useState(product.minOrderKg)
-  const [batches, setBatches] = useState(1)
-  const [batchRows, setBatchRows] = useState([])
+  const [entries, setEntries] = React.useState(() => {
+    const defaultQty = product?.minOrderKg || 500;
+    return [{ id: 1, date: new Date(Date.now() + (product?.leadTimeDays || 7) * 86400000).toISOString().slice(0,10), qty: defaultQty }];
+  });
 
-  const [payOpt, setPayOpt] = useState('full') // full | deposit | inst
-  const [depositPct, setDepositPct] = useState(50)
-  const [instCount, setInstCount] = useState(3)
-  const [firstPaymentOffsetDays, setFirstPaymentOffsetDays] = useState(0)
+  React.useEffect(() => {
+    // index reset if product changes
+    setEntries(prev => prev.map(e => ({ ...e })));
+  }, [product?.productId]);
 
-  // --------------------------------------------
-  // INIT BATCHES
-  // --------------------------------------------
-  useEffect(() => {
-    const init = (n = 1) => {
-      const per = Math.floor(qty / n)
-      const rem = qty - per * n
-      const arr = Array.from({ length: n }, (_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() + product.leadTimeDays + i * 3)
-        return {
-          date: d.toISOString().slice(0, 10),
-          qty: per + (i === 0 ? rem : 0)
-        }
-      })
-      setBatchRows(arr)
-    }
-    init(batches)
-  }, [qty, batches, product])
+  if (!product) return null;
 
-  // --------------------------------------------
-  // VALIDATE INPUTS
-  // --------------------------------------------
-  function validate() {
-    const sum = batchRows.reduce((s, b) => s + Number(b.qty || 0), 0)
-    if (sum !== qty) return { ok: false, msg: "Sum of batches must equal total qty" }
-
-    for (const b of batchRows) {
-      const min = new Date()
-      min.setDate(min.getDate() + product.leadTimeDays)
-      const chosen = new Date(b.date)
-      if (chosen < min) {
-        return {
-          ok: false,
-          msg: `Batch date ${b.date} is earlier than minimum allowed ${min.toISOString().slice(0, 10)}`
-        }
-      }
-    }
-
-    if (payOpt === 'deposit' && (depositPct <= 0 || depositPct >= 100)) {
-      return { ok: false, msg: "Deposit % must be between 1 and 99" }
-    }
-
-    if (payOpt === 'inst' && instCount < 2) {
-      return { ok: false, msg: "Installments must be 2 or more" }
-    }
-
-    return { ok: true }
+  function updateEntry(idx, key, value) {
+    setEntries(prev => prev.map(e => e.id === idx ? { ...e, [key]: value } : e));
+  }
+  function addEntry() {
+    setEntries(prev => [...prev, { id: Date.now(), date: new Date().toISOString().slice(0,10), qty: product.minOrderKg || 500 }]);
+  }
+  function removeEntry(id) {
+    setEntries(prev => prev.filter(e => e.id !== id));
   }
 
-  // --------------------------------------------
-  // SAVE PAYLOAD TO CART (server computes final amounts)
-  // --------------------------------------------
-  function save() {
-    const v = validate()
-    if (!v.ok) return alert(v.msg)
-
-    const paymentPlan = {
-      type: payOpt,
-      depositPct,
-      instCount,
-      firstPaymentOffsetDays
-    }
-
-    const payload = {
-      mode: 'scheduled',
-      qty: Number(qty),
-      pricePerKg: product.pricePerKg,
+  function handleSave() {
+    // compute total qty
+    const totalQty = entries.reduce((s,e)=> s + Number(e.qty || 0), 0);
+    const scheduledBatches = entries.map(e => ({ date: e.date, qty: Number(e.qty || 0) }));
+    onSave({
+      productId: product.productId,
       name: product.name,
-      scheduledBatches: batchRows.map((b) => ({ ...b })),
-      paymentPlan
-    }
-
-    onSave(payload)
+      pricePerKg: product.pricePerKg,
+      qty: totalQty,
+      scheduledBatches
+    });
+    onClose();
   }
 
-  // --------------------------------------------
-  // UI
-  // --------------------------------------------
   return (
-    <div className="modal">
-      <div className="box">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "2px solid #e5e7eb" }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: "#111827" }}>Schedule — {product.name}</h3>
-            <div className="muted small" style={{ marginTop: "0.5rem" }}>
-              Min order {product.minOrderKg} kg • Lead time {product.leadTimeDays} days
-            </div>
-          </div>
-          <button className="btn ghost" onClick={onClose} style={{ padding: "0.5rem 1rem" }}>Close</button>
-        </div>
+    <div style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(2,6,23,0.25)', zIndex:999 }}>
+      <div style={{ width:700, background:'#fff', borderRadius:10, padding:20 }}>
+        <h3 style={{ marginTop:0 }}>{product.name} — Schedule deliveries</h3>
 
-        {/* Quantity + Batches */}
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
-          <div style={{ flex: 1 }}>
-            <label>Total quantity (kg)</label>
-            <input type="number" value={qty} onChange={e => setQty(Number(e.target.value) || 0)} />
-          </div>
-
-          <div style={{ width: "180px" }}>
-            <label># Batches</label>
-            <select value={batches} onChange={e => setBatches(Number(e.target.value))}>
-              <option>1</option><option>2</option><option>3</option><option>4</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Batch rows */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ marginBottom: "0.75rem", display: "block" }}>Suggested schedule (editable)</label>
-          <div style={{ border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "0.75rem", background: "#f9fafb" }}>
-            {batchRows.map((b, i) => (
-              <div key={i} style={{ display: "flex", gap: "0.75rem", marginBottom: "0.75rem", alignItems: "center" }}>
-                <input
-                  type="date"
-                  value={b.date}
-                  onChange={e => {
-                    const nr = [...batchRows]
-                    nr[i].date = e.target.value
-                    setBatchRows(nr)
-                  }}
-                  style={{ flex: 1 }}
-                />
-                <input
-                  type="number"
-                  value={b.qty}
-                  onChange={e => {
-                    const nr = [...batchRows]
-                    nr[i].qty = Number(e.target.value) || 0
-                    setBatchRows(nr)
-                  }}
-                  style={{ width: "120px" }}
-                  placeholder="Qty (kg)"
-                />
-                <div className="small" style={{ width: "140px", fontWeight: 600, color: "#0b66a3" }}>📅 ETA: {b.date}</div>
+        <div style={{ display:'flex', gap:12, flexDirection:'column', maxHeight:420, overflowY:'auto' }}>
+          {entries.map(e => (
+            <div key={e.id} style={{ display:'flex', gap:8, alignItems:'center', padding:8, border:'1px solid #eef2f5', borderRadius:8 }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:12, color:'#374151' }}>Date</label>
+                <input type="date" value={e.date} onChange={ev => updateEntry(e.id, 'date', ev.target.value)} className="input" />
               </div>
-            ))}
-          </div>
+              <div style={{ width:140 }}>
+                <label style={{ fontSize:12, color:'#374151' }}>Qty (kg)</label>
+                <input type="number" value={e.qty} onChange={ev => updateEntry(e.id, 'qty', Number(ev.target.value))} className="input" />
+              </div>
+              <div>
+                <button onClick={() => removeEntry(e.id)} style={{ padding:'8px 10px', borderRadius:8 }}>Remove</button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Payment method */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label>Payment option</label>
-          <select value={payOpt} onChange={e => setPayOpt(e.target.value)}>
-            <option value="full">Full on delivery</option>
-            <option value="deposit">Deposit</option>
-            <option value="inst">Installments</option>
-          </select>
-        </div>
-
-        {payOpt === 'deposit' && (
-          <div style={{ marginBottom: "1.5rem", display: "flex", gap: "1rem", padding: "1rem", background: "#f9fafb", borderRadius: "0.75rem", border: "1px solid #e5e7eb" }}>
-            <div style={{ flex: 1 }}>
-              <label>Deposit %</label>
-              <input type="number" value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} min="1" max="99" />
-            </div>
-            <div style={{ width: "200px" }}>
-              <label>First payment offset (days)</label>
-              <input type="number" value={firstPaymentOffsetDays} onChange={e => setFirstPaymentOffsetDays(Number(e.target.value))} min="0" />
-            </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:12 }}>
+          <button onClick={addEntry} style={{ padding:'8px 12px', borderRadius:8, background:'#fff', border:'1px solid #d1d5db' }}>Add split</button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={onClose} style={{ padding:'8px 12px', borderRadius:8 }}>Cancel</button>
+            <button onClick={handleSave} style={{ padding:'8px 12px', borderRadius:8, background:'#0b69a3', color:'#fff' }}>Save schedule</button>
           </div>
-        )}
-
-        {payOpt === 'inst' && (
-          <div style={{ marginBottom: "1.5rem", display: "flex", gap: "1rem", padding: "1rem", background: "#f9fafb", borderRadius: "0.75rem", border: "1px solid #e5e7eb" }}>
-            <div style={{ flex: 1 }}>
-              <label># Installments</label>
-              <input type="number" value={instCount} onChange={e => setInstCount(Number(e.target.value))} min="2" />
-            </div>
-            <div style={{ width: "200px" }}>
-              <label>First payment offset (days)</label>
-              <input type="number" value={firstPaymentOffsetDays} onChange={e => setFirstPaymentOffsetDays(Number(e.target.value))} min="0" />
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "2px solid #e5e7eb", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-          <button className="btn ghost" onClick={onClose} style={{ padding: "0.75rem 1.5rem" }}>Cancel</button>
-          <button className="btn" onClick={save} style={{ padding: "0.75rem 1.5rem" }}>Add to cart</button>
         </div>
       </div>
     </div>
-  )
+  );
 }

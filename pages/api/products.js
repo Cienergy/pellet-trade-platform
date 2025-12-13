@@ -1,13 +1,60 @@
-export default function handler(req,res){
-    const products = [
-      {id:'p-nap-20', feedstock:'Napier', name:'Napier Pellets 20kg', pricePerKg:12.0, moisture:8, calorific:4200, minOrderKg:100, stockByRegion:{north:500,east:0,west:120,south:80}, leadTimeDays:3, supplier:'Cienergy'},
-      {id:'p-gns-10', feedstock:'Groundnut shell', name:'Groundnut Shell Pellets 10kg', pricePerKg:15.5, moisture:6, calorific:4000, minOrderKg:50, stockByRegion:{north:0,east:300,west:200,south:20}, leadTimeDays:5, supplier:'Cienergy'},
-      {id:'p-mus-25', feedstock:'Mustard stalk', name:'Mustard Stalk Pellets 25kg', pricePerKg:11.0, moisture:10, calorific:3800, minOrderKg:200, stockByRegion:{north:0,east:0,west:500,south:0}, leadTimeDays:14, supplier:'Cienergy'},
-      {id:'p-cot-20', feedstock:'Cotton stalk', name:'Cotton Stalk Pellets 20kg', pricePerKg:13.2, moisture:9, calorific:3900, minOrderKg:100, stockByRegion:{north:20,east:60,west:0,south:0}, leadTimeDays:2, supplier:'Cienergy'},
-      {id:'p-soy-20', feedstock:'Soya stalk', name:'Soya Stalk Pellets 20kg', pricePerKg:12.8, moisture:7, calorific:4050, minOrderKg:100, stockByRegion:{north:80,east:20,west:0,south:30}, leadTimeDays:4, supplier:'Cienergy'},
-      {id:'p-cor-15', feedstock:'Coriander husk', name:'Coriander Husk Pellets 15kg', pricePerKg:16.0, moisture:5, calorific:4100, minOrderKg:50, stockByRegion:{north:0,east:120,west:40,south:10}, leadTimeDays:6, supplier:'Cienergy'},
-      {id:'p-cane-25', feedstock:'Cane trash', name:'Cane Trash Pellets 25kg', pricePerKg:10.5, moisture:12, calorific:3700, minOrderKg:200, stockByRegion:{north:0,east:0,west:600,south:50}, leadTimeDays:10, supplier:'Cienergy'}
-    ];
-    res.status(200).json(products);
+// pages/api/products.js
+import { supabaseAdmin } from '../../lib/supabaseServer';
+
+export default async function handler(req, res) {
+  try {
+    const SUPABASE_OK = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && supabaseAdmin);
+    if (!SUPABASE_OK) {
+      // Prototype fallback: return a small static list (keeps frontend working without DB)
+      return res.status(200).json([
+        {
+          productId: '00000000-0000-0000-0000-000000000001',
+          name: 'Napier Grass Pellets',
+          feedstock: 'Napier',
+          pricePerKg: 12.5,
+          minOrderKg: 500,
+          leadTimeDays: 0,
+          stockByRegion: { north: 2500, east: 1200, west: 0, south: 0 },
+        },
+        {
+          productId: '00000000-0000-0000-0000-000000000002',
+          name: 'Groundnut Shell Pellets',
+          feedstock: 'Groundnut shell',
+          pricePerKg: 11.2,
+          minOrderKg: 500,
+          leadTimeDays: 3,
+          stockByRegion: { north: 0, east: 800, west: 400, south: 0 },
+        }
+      ]);
+    }
+
+    // Fetch rows from products table
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select('id, slug, name, feedstock, price_per_kg, min_order_kg, lead_time_days, stock_by_region, metadata')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('products fetch error', error);
+      return res.status(500).json({ error });
+    }
+
+    // Normalize to frontend shape
+    const products = (data || []).map(p => ({
+      productId: p.id,
+      slug: p.slug,
+      name: p.name,
+      feedstock: p.feedstock,
+      pricePerKg: Number(p.price_per_kg || 0),
+      minOrderKg: Number(p.min_order_kg || 100),
+      leadTimeDays: Number(p.lead_time_days || 7),
+      stockByRegion: p.stock_by_region || {},
+      metadata: p.metadata || {},
+    }));
+
+    return res.status(200).json(products);
+  } catch (err) {
+    console.error('GET /api/products error', err);
+    return res.status(500).json({ error: err.message || err });
   }
-  
+}

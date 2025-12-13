@@ -1,218 +1,254 @@
 // pages/orders.js
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import PaymentModal from "../components/PaymentModal";
 
-export default function Orders(){
-  const [orders, setOrders] = useState([])
-  const [q, setQ] = useState('')
-  const [selected, setSelected] = useState(null)
-  const [highlight, setHighlight] = useState(null)
-  const [loadingPay, setLoadingPay] = useState(false)
-  const [uploading, setUploading] = useState(false)
+function formatINR(v = 0) {
+  return "₹ " + Number(v).toLocaleString("en-IN");
+}
 
-  useEffect(()=> {
-    async function init(){
-      await refreshOrders()
-      const params = new URLSearchParams(window.location.search)
-      const h = params.get('highlight')
-      if(h) setHighlight(h)
-    }
-    init()
-  }, [])
+<button
+  className="btn"
+  onClick={() => setShowPayment(true)}
+>
+  Manage Payment
+</button>
 
-  async function refreshOrders(){
-    const res = await fetch('/api/orders')
-    const json = await res.json()
-    setOrders(json || [])
-    if(selected){
-      const found = (json || []).find(x => (x.order_id || x.orderId) === (selected.order_id || selected.orderId || selected.orderId))
-      if(found) setSelected(found)
-    }
-  }
 
-  const filtered = orders.filter(o => {
-    if(!q) return true
-    const t = q.toLowerCase()
-    const oid = (o.order_id || o.orderId || '').toString().toLowerCase()
-    return oid.includes(t) || (o.invoice_number || '').toLowerCase().includes(t) || (o.buyer?.name || '').toLowerCase().includes(t)
-  })
 
-  async function markAsPaid(orderId, dueDate, amount){
-    setLoadingPay(true)
+function getStatus(totals) {
+  if (!totals) return "pending";
+  if (totals.outstanding === 0) return "paid";
+  if (totals.paid > 0) return "partial";
+  return "pending";
+}
+
+export default function OrdersPage() {
+  const router = useRouter();
+  const { highlight } = router.query;
+
+  const [orders, setOrders] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showPayment, setShowPayment] = useState(false);
+
+  // ================= LOAD ORDERS =================
+  async function loadOrders() {
+    setLoading(true);
     try {
-      const r = await fetch('/api/payments?action=mark-paid', {
-        method:'POST',
-        headers:{ 'content-type':'application/json' },
-        body: JSON.stringify({ orderId, dueDate, amount })
-      })
-      const j = await r.json()
-      if(!r.ok) {
-        window.enqueueNotification && window.enqueueNotification('Mark paid failed', { variant:'error' })
-      } else {
-        window.enqueueNotification && window.enqueueNotification('Payment marked paid', { ttl:2200 })
-        await refreshOrders()
+      const res = await fetch("/api/orders", { cache: "no-store" });
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : [];
+      setOrders(arr);
+
+      if (highlight && arr.find(o => String(o.id) === String(highlight))) {
+        setSelectedId(highlight);
+      } else if (!selectedId && arr.length) {
+        setSelectedId(arr[0].id);
       }
-    } catch(e){
-      console.error(e)
-      window.enqueueNotification && window.enqueueNotification('Mark paid error', { variant:'error' })
-    } finally { setLoadingPay(false) }
+    } catch (e) {
+      console.error("Failed to load orders", e);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // Upload a client-generated PDF (base64 or file input)
-  // This function demonstrates uploading a base64 PDF string via API
-  async function uploadInvoice(orderId, file) {
-    // file: File object from input
-    if(!file) return
-    setUploading(true)
-    try {
-      const buffer = await file.arrayBuffer()
-      const b64 = Buffer.from(buffer).toString('base64')
-      const res = await fetch('/api/upload-invoice', {
-        method:'POST',
-        headers: {'content-type':'application/json'},
-        body: JSON.stringify({ orderId, filename: file.name, fileBase64: b64 })
-      })
-      const j = await res.json()
-      if(res.ok){
-        window.enqueueNotification && window.enqueueNotification('Invoice uploaded', { ttl:2500 })
-        await refreshOrders()
-      } else {
-        window.enqueueNotification && window.enqueueNotification('Upload failed', { variant:'error' })
-        console.error('upload-invoice failed', j)
-      }
-    } catch(e){
-      console.error(e)
-      window.enqueueNotification && window.enqueueNotification('Upload error', { variant:'error' })
-    } finally { setUploading(false) }
-  }
+  useEffect(() => { loadOrders(); }, []);
+  useEffect(() => { if (highlight) setSelectedId(highlight); }, [highlight]);
+
+  const order = orders.find(o => String(o.id) === String(selectedId));
+  const totals = order?.totals || { subtotal: 0, paid: 0, outstanding: 0 };
+  const status = getStatus(totals);
 
   return (
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <div>
-          <h2 style={{margin:0}}>Orders</h2>
-          <div className="muted">All orders — newest first</div>
-        </div>
-        <div>
-          <input placeholder="Search order / invoice / buyer" value={q} onChange={e=>setQ(e.target.value)} style={{padding:8,borderRadius:8,border:'1px solid #eef3f7',width:320}}/>
-        </div>
+    <div className="app-container">
+      {/* ================= PAGE HEADER ================= */}
+      <div className="page-header">
+        <h1>Orders</h1>
+        <p className="muted">
+          Track orders, manage payments, download invoices & receipts
+        </p>
       </div>
 
-      <div style={{display:'grid',gap:12}}>
-        {filtered.length === 0 && <div className="card muted">No orders found</div>}
-        {filtered.slice().map(o => {
-          const id = o.order_id || o.orderId
-          const isHighlighted = highlight && highlight === id
-          return (
-            <div key={id} className={`order-card ${isHighlighted ? 'order-highlight' : ''}`} style={{cursor:'pointer'}} onClick={()=> setSelected(o)}>
-              <div style={{flex:1}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div className="orders-grid">
+        {/* ================= LEFT: ORDER LIST ================= */}
+        <div className="card">
+          <h3>All Orders</h3>
+
+          {loading && <div className="muted">Loading…</div>}
+          {!loading && orders.length === 0 && (
+            <div className="muted">No orders found</div>
+          )}
+
+          {!loading && orders.map(o => (
+            <div
+              key={o.id}
+              onClick={() => setSelectedId(o.id)}
+              className={`card-item ${o.id === selectedId ? "selected" : ""}`}
+              style={{ cursor: "pointer" }}
+            >
+              <div>
+                <strong>
+                  {String(o.id).slice(0, 6)}…
+                  {String(o.id).slice(-4)}
+                </strong>
+                <div className="small muted">{o.region || "—"}</div>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <strong>{formatINR(o.totals?.subtotal)}</strong>
+                <div className={`badge ${getStatus(o.totals)}`}>
+                  {getStatus(o.totals)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ================= CENTER: ORDER DETAILS ================= */}
+        <div className="card">
+          {!order ? (
+            <div className="muted">Select an order to view details</div>
+          ) : (
+            <>
+              {/* HEADER */}
+              <div className="order-head">
+                <div>
+                  <h2 style={{ margin: 0 }}>
+                    Order {String(order.id).slice(0, 6)}…
+                  </h2>
+                  <span className={`badge ${status}`}>{status}</span>
+                  <div className="muted">
+                    {new Date(order.created_at).toLocaleString()}
+                  </div>
+                </div>
+
+                <button
+                  className="btn ghost"
+                  onClick={() =>
+                    window.open(
+                      `/api/orders/${order.id}/invoice`,
+                      "_blank"
+                    )
+                  }
+                >
+                  Download Invoice
+                </button>
+              </div>
+
+              {/* ITEMS */}
+              <h3>Items</h3>
+              {order.items?.map((i, idx) => (
+                <div key={idx} className="item-mini">
                   <div>
-                    <div style={{fontWeight:700}}>{id}</div>
-                    <div className="order-meta">{(o.created_at || o.createdAt || '').slice(0,10)} • {o.buyer?.name || 'Buyer'}</div>
+                    <strong>{i.name}</strong>
+                    <div className="small muted">
+                      {i.qty} kg × ₹{i.pricePerKg}
+                    </div>
                   </div>
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontWeight:800}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format((o.totals?.total||0))}</div>
-                    <div className="order-meta">Status: {o.status || 'Placed'}</div>
-                  </div>
+                  <strong>{formatINR(i.qty * i.pricePerKg)}</strong>
                 </div>
-                <div style={{marginTop:8}} className="muted">Items: {(o.items || []).length} • Transport: {o.transport?.transportMethod || '-'}</div>
-              </div>
-              <div style={{width:120,textAlign:'right'}}>
-                <button className="btn" onClick={(e)=>{ e.stopPropagation(); setSelected(o) }}>View</button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              ))}
 
-      {/* Order modal */}
-      {selected && (
-        <div className="modal" onClick={()=> setSelected(null)}>
-          <div className="box" onClick={e=> e.stopPropagation()}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>
-                <h3 style={{margin:0}}>{selected.order_id || selected.orderId}</h3>
-                <div className="muted" style={{marginTop:6}}>Invoice: {selected.invoice_number || selected.invoiceNumber}</div>
-              </div>
-              <div>
-                {selected.invoice_url ? (
-                  <a className="btn" href={selected.invoice_url} target="_blank" rel="noreferrer">Download Invoice</a>
-                ) : (
-                  <>
-                    <label className="btn" style={{cursor:'pointer'}}>
-                      Upload invoice
-                      <input type="file" accept="application/pdf" style={{display:'none'}} onChange={e=> uploadInvoice(selected.order_id || selected.orderId, e.target.files[0])} />
-                    </label>
-                    <button className="btn ghost" style={{marginLeft:8}} onClick={()=> setSelected(null)}>Close</button>
-                  </>
-                )}
-              </div>
-            </div>
+              {/* PAYMENTS + TIMELINE */}
+              <h3 style={{ marginTop: 24 }}>Payments</h3>
 
-            <div style={{marginTop:12}}>
-              {/* Items table */}
-              <table className="invoice-table">
-                <thead><tr><th>#</th><th>Description</th><th>Qty (kg)</th><th>Rate/kg</th><th>Amount</th></tr></thead>
-                <tbody>
-                  {(selected.items || []).map((it, idx)=>(
-                    <tr key={idx}>
-                      <td>{idx+1}</td>
-                      <td>
-                        <div style={{fontWeight:700}}>{it.name}</div>
-                        {(it.scheduledBatches||[]).map((b,i)=> <div key={i} className="small">{`Batch: ${b.batchNumber} • ${b.date} • ${b.qty}kg`}</div>)}
-                      </td>
-                      <td style={{textAlign:'right'}}>{it.qty}</td>
-                      <td style={{textAlign:'right'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(it.pricePerKg)}</td>
-                      <td style={{textAlign:'right'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(it.lineTotal || (it.pricePerKg * it.qty))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* totals */}
-              <div style={{display:'flex',justifyContent:'flex-end',marginTop:12}}>
-                <div style={{width:320}}>
-                  <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Subtotal</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.totals?.subtotal || 0)}</div></div>
-                  <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">Transport</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.transport?.transportCharge || 0)}</div></div>
-                  <div style={{display:'flex',justifyContent:'space-between'}}><div className="muted">GST (12%)</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.totals?.tax || 0)}</div></div>
-                  <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontWeight:700}}><div>Total</div><div>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(selected.totals?.total || 0)}</div></div>
-                </div>
-              </div>
-
-              {/* Payment schedule */}
-              {(selected.payments && selected.payments.length>0) ? (
-                <div style={{marginTop:16}}>
-                  <h4 style={{margin:0}}>Payment schedule</h4>
-                  <table className="invoice-table" style={{marginTop:8}}>
-                    <thead><tr><th>Due date</th><th style={{textAlign:'right'}}>Amount</th><th>Details</th><th>Actions</th></tr></thead>
-                    <tbody>
-                      {selected.payments.map((p, idx)=> (
-                        <tr key={idx}>
-                          <td>{p.dueDate}</td>
-                          <td style={{textAlign:'right'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(p.amount)}</td>
-                          <td>{(p.details||[]).map((d,i)=> <div key={i} className="small">{d.note} • {d.itemId} • ₹{d.amount}</div>)}</td>
-                          <td style={{textAlign:'right'}}>
-                            {p.status === 'paid' ? (
-                              <div className="small">Paid • {p.receiptId || ''}</div>
-                            ) : (
-                              <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-                                <button className="btn" onClick={() => markAsPaid(selected.order_id || selected.orderId, p.dueDate, p.amount)} disabled={loadingPay}>Mark as paid</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="muted small" style={{marginTop:12}}>No payment schedule available.</div>
+              {order.payments?.length === 0 && (
+                <div className="muted">No payments recorded yet</div>
               )}
 
-            </div>
-          </div>
+              <div className="timeline">
+                {order.payments?.map(p => (
+                  <div key={p.id} className="timeline-item">
+                    <strong>{formatINR(p.amount)}</strong>
+                    <div className="small muted">
+                      {p.payment_mode || p.mode || "payment"} •{" "}
+                      {new Date(p.created_at).toLocaleDateString()}
+                    </div>
+
+                    {/* ===== RECEIPT: ALWAYS SHOWN IF PAYMENT EXISTS ===== */}
+                    {p.id && (
+                      <a
+                        className="btn ghost"
+                        href={`/api/payments/${p.id}/receipt`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ marginTop: 6 }}
+                      >
+                        Download Receipt
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* MANAGE PAYMENT */}
+              {totals.outstanding > 0 && (
+                <button
+                  className="btn"
+                  style={{ marginTop: 20 }}
+                  onClick={() => setShowPayment(true)}
+                >
+                  Manage Payment
+                </button>
+              )}
+            </>
+          )}
         </div>
-      )}
+
+        {/* ================= RIGHT: SUMMARY ================= */}
+        <div className="card summary">
+          <h3>Summary</h3>
+
+          <div className="row">
+            <span>Subtotal</span>
+            <strong>{formatINR(totals.subtotal)}</strong>
+          </div>
+
+          <div className="row">
+            <span>Paid</span>
+            <strong>{formatINR(totals.paid)}</strong>
+          </div>
+
+          <div className="row">
+            <span>Outstanding</span>
+            <strong
+              style={{
+                color:
+                  totals.outstanding > 0
+                    ? "var(--warning)"
+                    : "var(--success)",
+              }}
+            >
+              {formatINR(totals.outstanding)}
+            </strong>
+          </div>
+
+          <button
+            className="btn ghost"
+            style={{ width: "100%", marginTop: 16 }}
+            onClick={() => router.push("/create-order")}
+          >
+            Create New Order
+          </button>
+        </div>
+      </div>
+
+      {/* ================= PAYMENT MODAL ================= */}
+      {showPayment && order && (
+  <PaymentModal
+    orderId={order.id}
+    depositSchedule={order.deposit_schedule || []}
+    installmentSchedule={order.installment_schedule || []}
+    onClose={() => setShowPayment(false)}
+    onSaved={() => {
+      setShowPayment(false);
+      loadOrders();
+    }}
+  />
+)}
+
     </div>
-  )
+  );
 }

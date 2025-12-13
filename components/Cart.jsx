@@ -1,92 +1,182 @@
-import { useState, useEffect } from 'react'
+// components/Cart.jsx
+import { useState } from "react";
 
-export default function Cart({ cart = {}, onRemove = ()=>{}, onEdit = ()=>{}, onCheckout = ()=>{} }){
-  const [transport, setTransport] = useState({method:'standard', charge:0})
-  const [region, setRegion] = useState('north')
+export default function Cart({
+  cart,
+  onRemove,
+  onEdit,
+  onCheckout,
+  estimateTransport,
+  transportMode = "truck"
+}) {
+  const [paymentPlan, setPaymentPlan] = useState("full");
+  const [depositAmount, setDepositAmount] = useState("");
+  const [installments, setInstallments] = useState(2);
 
-  useEffect(()=>{
-    // compute default transport charge by region (simple map) - can be fetched from API
-    const map = { north:500, east:700, west:400, south:650 }
-    setTransport(t => ({...t, charge: map[region]||500}))
-  }, [region])
+  const subtotal = cart.reduce(
+    (s, c) => s + (Number(c.qty || 0) * Number(c.pricePerKg || 0)),
+    0
+  );
 
-  const items = Object.entries(cart)
-  const subtotal = items.reduce((s,[,it])=> s + (it.pricePerKg||0)*(it.qty||0), 0)
-  const transportCharge = Number(transport.charge||0)
-  const taxable = subtotal + transportCharge
-  const tax = Math.round(taxable * 0.12)
-  const total = taxable + tax
+  const transport = estimateTransport(transportMode);
+  const tax = Math.round((subtotal + transport) * 0.12);
+  const total = subtotal + transport + tax;
+
+  function handleCheckout() {
+    const payload = {
+      paymentPlan,
+      depositAmount: paymentPlan === "deposit" ? Number(depositAmount || 0) : null,
+      installments: paymentPlan === "installment" ? Number(installments || 0) : null,
+      transportMethod: transportMode,
+      transportCharge: transport
+    };
+
+    onCheckout(payload);
+  }
 
   return (
-    <div className="card" style={{position:'sticky',top:'calc(1.5rem + 80px)'}}>
-      <h4 style={{marginTop:0,marginBottom:'1.5rem',fontSize:'1.25rem',color:'#111827'}}>Cart & Shipping</h4>
+    <div className="card" style={{ padding: 20 }}>
+      <h3 style={{ marginTop: 0 }}>Your cart</h3>
 
-      <div style={{marginBottom:'1.5rem'}}>
-        <label>Delivery region</label>
-        <select value={region} onChange={e=> setRegion(e.target.value)}>
-          <option value="north">North</option><option value="east">East</option><option value="west">West</option><option value="south">South</option>
-        </select>
-      </div>
+      {/* CART ITEMS */}
+      {cart.length === 0 ? (
+        <div className="muted">Cart empty</div>
+      ) : (
+        cart.map((item) => {
+          const amount = Number(item.qty) * Number(item.pricePerKg);
 
-      <div style={{maxHeight:280, overflowY:'auto',marginBottom:'1.5rem',border:'1px solid #e5e7eb',borderRadius:'0.75rem',padding:'0.5rem'}}>
-        {items.length===0 && <div className="muted" style={{textAlign:'center',padding:'2rem'}}>Cart is empty</div>}
-        {items.map(([id,it])=>(
-          <div className="cart-row" key={id}>
-            <div style={{flex:1}}>
-              <strong style={{display:'block',marginBottom:'0.25rem',color:'#111827'}}>{it.name}</strong>
-              <div className="small" style={{marginBottom:'0.25rem'}}>
-                <span className="badge" style={{fontSize:'0.7rem',padding:'0.125rem 0.5rem'}}>
-                  {it.mode === 'immediate' ? 'Immediate' : 'Scheduled'}
-                </span>
+          return (
+            <div
+              key={item.id}
+              style={{
+                borderBottom: "1px solid rgba(0,0,0,0.06)",
+                paddingBottom: 10,
+                marginBottom: 14
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <strong>{item.name}</strong>
+                <strong>₹ {amount.toLocaleString("en-IN")}</strong>
               </div>
-              <div className="small" style={{marginBottom:'0.25rem'}}>Qty: <strong>{it.qty} kg</strong></div>
-              {it.scheduledBatches && it.scheduledBatches.length>0 && (
-                <div className="small" style={{color:'#6b7280',fontSize:'0.75rem'}}>
-                  {it.scheduledBatches.map((b,i)=>(
-                    <div key={i} style={{marginTop:'0.25rem'}}>📅 {b.date} × {b.qty}kg</div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{textAlign:'right',minWidth:'100px'}}>
-              <input type="number" min="0" value={it.qty} onChange={(e)=> onEdit(id, Number(e.target.value)||0)} style={{width:80,padding:'0.375rem',marginBottom:'0.5rem',fontSize:'0.875rem'}}/>
-              <div>
-                <button className="btn ghost" onClick={()=> onRemove(id)} style={{padding:'0.375rem 0.75rem',fontSize:'0.8125rem'}}>Remove</button>
+
+              <div className="muted small" style={{ marginBottom: 8 }}>
+                {item.qty} kg • ₹ {item.pricePerKg}/kg
+              </div>
+
+              {/* Quantity Controls */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  className="btn ghost"
+                  onClick={() => onEdit(item.id, Math.max(0, Number(item.qty) - 100))}
+                >
+                  –
+                </button>
+                <span>{item.qty} kg</span>
+                <button
+                  className="btn ghost"
+                  onClick={() => onEdit(item.id, Number(item.qty) + 100)}
+                >
+                  +
+                </button>
+                <button className="btn ghost" onClick={() => onRemove(item.id)}>
+                  Remove
+                </button>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          );
+        })
+      )}
 
-      <div style={{marginBottom:'1.5rem'}}>
-        <label>Transport method</label>
-        <select value={transport.method} onChange={e=> {
-          const m = e.target.value
-          const base = m === 'express' ? 1200 : m === 'economy' ? 300 : {standard:600}[m] || 600
-          setTransport({method:m, charge: base})
-        }}>
-          <option value="standard">Standard (default)</option>
-          <option value="express">Express (+ higher charge)</option>
-          <option value="economy">Economy (+ lower charge)</option>
-        </select>
-      </div>
+      {/* PAYMENT PLAN SELECTION — AS REQUESTED */}
+      {cart.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <h4>Payment plan</h4>
 
-      <div className="totals">
-        <div><div className="muted">Subtotal</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(subtotal)}</div></div>
-        <div><div className="muted">Transport</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(transportCharge)}</div></div>
-        <div><div className="muted">Taxable total</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(taxable)}</div></div>
-        <div><div className="muted">GST (12%)</div><div style={{fontWeight:600}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(tax)}</div></div>
-        <div style={{marginTop:'0.75rem',paddingTop:'0.75rem',borderTop:'2px solid #d1d5db'}}>
-          <div style={{fontSize:'1.125rem',fontWeight:800,color:'#0b66a3'}}>Total</div>
-          <div style={{fontSize:'1.25rem',fontWeight:800,color:'#0b66a3'}}>{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(total)}</div>
+          <label style={{ display: "block", marginTop: 6 }}>
+            <input
+              type="radio"
+              checked={paymentPlan === "full"}
+              onChange={() => setPaymentPlan("full")}
+            />{" "}
+            Full Payment
+          </label>
+
+          <label style={{ display: "block", marginTop: 6 }}>
+            <input
+              type="radio"
+              checked={paymentPlan === "deposit"}
+              onChange={() => setPaymentPlan("deposit")}
+            />{" "}
+            Deposit
+          </label>
+
+          {paymentPlan === "deposit" && (
+            <input
+              type="number"
+              className="input"
+              placeholder="Deposit amount (₹)"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              style={{ marginTop: 8 }}
+            />
+          )}
+
+          <label style={{ display: "block", marginTop: 6 }}>
+            <input
+              type="radio"
+              checked={paymentPlan === "installment"}
+              onChange={() => setPaymentPlan("installment")}
+            />{" "}
+            Installments
+          </label>
+
+          {paymentPlan === "installment" && (
+            <input
+              type="number"
+              className="input"
+              placeholder="No. of installments"
+              value={installments}
+              onChange={(e) => setInstallments(e.target.value)}
+              style={{ marginTop: 8 }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* SUMMARY */}
+      <div style={{ marginTop: 20 }}>
+        <div className="muted small">Subtotal</div>
+        <div>₹ {subtotal.toLocaleString("en-IN")}</div>
+
+        <div className="muted small" style={{ marginTop: 6 }}>
+          Transport
+        </div>
+        <div>₹ {transport.toLocaleString("en-IN")}</div>
+
+        <h3 style={{ marginTop: 10 }}>Total (est)</h3>
+        <div style={{ fontWeight: 800, fontSize: 18 }}>
+          ₹ {total.toLocaleString("en-IN")}
         </div>
       </div>
 
-      <div style={{marginTop:'1.5rem'}}>
-        <button className="btn" onClick={()=> onCheckout({ transportMethod: transport.method, transportCharge, deliveryRegion:region })} style={{width:'100%',padding:'0.75rem',fontSize:'1rem',fontWeight:700}}>
-          Checkout →
-        </button>
-      </div>
+      {/* ACTION BUTTONS */}
+      {cart.length > 0 && (
+        <div style={{ marginTop: 18, display: "flex", gap: 10 }}>
+          <button className="btn" style={{ flex: 1 }} onClick={handleCheckout}>
+            Place order
+          </button>
+
+          <button
+            className="btn ghost"
+            onClick={() => {
+              localStorage.removeItem("pn_cart_v2");
+              window.location.reload();
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
     </div>
-  )
+  );
 }

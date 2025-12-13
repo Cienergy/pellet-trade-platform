@@ -1,13 +1,10 @@
-import '../styles/globals.css'
-import Header from '../components/Header'
-import Notifications from '../components/Notifications'
+import Layout from "../components/Layout";
+import "../styles/globals.css";
 
 export default function App({ Component, pageProps }) {
   return (
-    <div className="container">
-      <Header />
+    <Layout>
       <Component {...pageProps} />
-      <Notifications />
-    </div>
-  )
+    </Layout>
+  );
 }

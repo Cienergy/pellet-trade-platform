@@ -1,76 +1,122 @@
-import Link from 'next/link'
-
-export default function Home(){
-  return (
-    <div className="container">
-      <header className="header">
-        <div className="brand">
-          <div className="logo">CIC</div>
-          <div>
-            <h1>Pellet Trade Platform</h1>
-            <div className="sub">Buy pellets — Napier & other feedstocks. INR pricing • Scheduling • Invoices</div>
-          </div>
-        </div>
-
-        <nav className="nav">
-          <Link href="/order"><button className="btn">Start Order</button></Link>
-          <Link href="/orders"><button className="btn ghost">Orders</button></Link>
-        </nav>
-      </header>
-
-      <main style={{marginTop:'2rem'}}>
-        <section className="card" style={{display:'grid',gridTemplateColumns:'1fr 360px',gap:'2rem',alignItems:'center',background:'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'}}>
-          <div>
-            <h2 style={{marginTop:0,marginBottom:'1rem',fontSize:'2rem',fontWeight:800,lineHeight:1.2,color:'#111827'}}>
-              Fast, reliable biomass pellets — delivered on schedule
-            </h2>
-            <p className="muted" style={{fontSize:'1.0625rem',lineHeight:1.7,marginBottom:'1.5rem'}}>
-              Find pellets available now in your region, or schedule production in advance. Auto-generated batch numbers, invoice PDF, transport calculation and payment scheduling — everything you need for trade.
+export default function Home() {
+    return (
+      <>
+        {/* HERO */}
+        <section className="hero">
+          <div className="hero-content">
+            <h1>Cienergy Pellet Trading Platform</h1>
+            <p>
+              Procure certified solid biofuels for industrial process heating.
+              Built on traceable supply chains, predictable delivery, and
+              measurable climate impact.
             </p>
-
-            <ul style={{marginTop:'1.5rem',marginBottom:'1.5rem',paddingLeft:'1.5rem',listStyle:'none'}}>
-              <li className="small" style={{marginBottom:'0.75rem',position:'relative',paddingLeft:'1.5rem'}}>
-                <span style={{position:'absolute',left:0,color:'#0b66a3'}}>✓</span>
-                Region-based availability & lead-time filtering
-              </li>
-              <li className="small" style={{marginBottom:'0.75rem',position:'relative',paddingLeft:'1.5rem'}}>
-                <span style={{position:'absolute',left:0,color:'#0b66a3'}}>✓</span>
-                Smart scheduling with per-batch ETA
-              </li>
-              <li className="small" style={{marginBottom:'0.75rem',position:'relative',paddingLeft:'1.5rem'}}>
-                <span style={{position:'absolute',left:0,color:'#0b66a3'}}>✓</span>
-                Transport & tax calculation in INR
-              </li>
-              <li className="small" style={{marginBottom:'0.75rem',position:'relative',paddingLeft:'1.5rem'}}>
-                <span style={{position:'absolute',left:0,color:'#0b66a3'}}>✓</span>
-                Server-generated invoice PDF (downloadable)
-              </li>
-            </ul>
-
-            <div style={{marginTop:'2rem',display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
-              <Link href="/order"><button className="btn" style={{padding:'0.75rem 1.5rem',fontSize:'1rem'}}>Create an order</button></Link>
-              <Link href="/orders"><button className="btn ghost" style={{padding:'0.75rem 1.5rem',fontSize:'1rem'}}>View orders</button></Link>
+  
+            <div className="hero-actions">
+              <a href="/create-order" className="btn">
+                Create Order
+              </a>
+              <a href="/orders" className="btn ghost">
+                Manage Orders
+              </a>
             </div>
           </div>
-
-          <aside className="card" style={{textAlign:'center',background:'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',border:'2px solid #bfdbfe'}}>
-            <div style={{fontSize:'3rem',color:'#0b66a3',fontWeight:800,marginBottom:'0.5rem',letterSpacing:'-0.02em'}}>Cienergy</div>
-            <div className="muted" style={{marginTop:'0.5rem',fontWeight:600}}>Supplier: Cienergy (all inventory)</div>
-            <div style={{marginTop:'1.5rem',paddingTop:'1.5rem',borderTop:'2px solid #bfdbfe'}}>
-              <strong style={{display:'block',marginBottom:'0.5rem',color:'#111827'}}>Contact</strong>
-              <div className="small" style={{fontSize:'0.875rem'}}>sales@cienergy.co</div>
-              <div className="small" style={{fontSize:'0.875rem',marginTop:'0.25rem'}}>+91-XXXXXXXXXX</div>
-            </div>
-          </aside>
         </section>
-
-        <section style={{marginTop:'1.5rem'}} className="card">
-          <h3 style={{marginTop:0,marginBottom:'1rem',fontSize:'1.5rem',fontWeight:700}}>Quick demo</h3>
-          <p className="muted" style={{fontSize:'1rem',lineHeight:1.7}}>
-            Use <strong style={{color:'#111827'}}>Order Pellets</strong> to browse products, add immediate or scheduled items, supply transport details, and checkout. After placing the order you can download the server-generated invoice.
+  
+        {/* TRUST STRIP */}
+        <section className="trust">
+          <div>✔ Certified biofuels</div>
+          <div>✔ CAPS™ traceability</div>
+          <div>✔ Industrial scale supply</div>
+          <div>✔ Verified climate impact</div>
+        </section>
+  
+        {/* CAPS */}
+        <section className="card">
+          <h2>CAPS™ Framework</h2>
+          <p className="muted">
+            Our Cultivate–Aggregate–Process–Serve model ensures full control,
+            transparency, and scalability across the biofuel value chain.
           </p>
+  
+          <div className="caps-grid">
+            <div>
+              <h3>Cultivate</h3>
+              <p>Energy crops on degraded & underutilised land.</p>
+            </div>
+            <div>
+              <h3>Aggregate</h3>
+              <p>Biomass sourcing from farmers & SMEs.</p>
+            </div>
+            <div>
+              <h3>Process</h3>
+              <p>Pellets & briquettes with lab-verified specs.</p>
+            </div>
+            <div>
+              <h3>Serve</h3>
+              <p>Reliable bulk supply for industrial heat demand.</p>
+            </div>
+          </div>
         </section>
-      </main>
-    </div>
-  )
-}
+  
+        {/* PRODUCTS */}
+        <section className="card">
+          <h2>Solid Biofuel Products</h2>
+  
+          <div className="product-grid">
+            <div className="product-card">
+              <h3>Bio-Pellets</h3>
+              <ul>
+                <li>6–12 mm diameter</li>
+                <li>GCV: 3200–4200 kcal/kg</li>
+                <li>Low ash & moisture</li>
+                <li>Boiler & co-firing ready</li>
+              </ul>
+            </div>
+  
+            <div className="product-card">
+              <h3>Bio-Briquettes</h3>
+              <ul>
+                <li>60–100 mm</li>
+                <li>Direct coal replacement</li>
+                <li>Longer burn cycle</li>
+                <li>Batch-wise QC reports</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+  
+        {/* IMPACT */}
+        <section className="impact">
+          <h2>Measured Climate & Social Impact</h2>
+  
+          <div className="impact-grid">
+            <div>
+              <strong>&gt; 1.5 million</strong>
+              <span>tCO₂e emissions reduced</span>
+            </div>
+            <div>
+              <strong>&gt; 0.7 million</strong>
+              <span>person-days of employment</span>
+            </div>
+            <div>
+              <strong>&gt; 30,000 tons</strong>
+              <span>topsoil preserved</span>
+            </div>
+          </div>
+        </section>
+  
+        {/* CTA */}
+        <section className="cta">
+          <h2>Start Procuring Biofuels</h2>
+          <p>
+            Place orders, manage payments, and download invoices & receipts —
+            all from one platform.
+          </p>
+          <a href="/create-order" className="btn">
+            Create Order
+          </a>
+        </section>
+      </>
+    );
+  }
+  

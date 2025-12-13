@@ -1,6 +1,62 @@
 {
   "orders": [
     {
+      "order_id": "ORD-20251210-57899",
+      "invoice_number": "INV-202512-57899",
+      "buyer": {
+        "name": "Buyer Co",
+        "contact": "+91 9xxxxxxxx",
+        "state": "Maharashtra"
+      },
+      "items": [
+        {
+          "productId": "p-nap-20",
+          "name": "Napier Pellets 20kg",
+          "qty": 100,
+          "pricePerKg": 12,
+          "mode": "immediate",
+          "scheduledBatches": [
+            {
+              "date": "2025-12-10",
+              "qty": 100,
+              "batchNumber": "BATCH-20251210-2412"
+            }
+          ],
+          "paymentPlan": null,
+          "lineTotal": 1200
+        }
+      ],
+      "payments": [
+        {
+          "dueDate": "2025-12-10",
+          "amount": 1200,
+          "details": [
+            {
+              "note": "Full payment on delivery",
+              "itemId": "p-nap-20",
+              "amount": 1200
+            }
+          ],
+          "status": "paid",
+          "paidAt": "2025-12-10T10:52:44.196Z",
+          "receiptId": "RECEIPT-1765363964196"
+        }
+      ],
+      "totals": {
+        "subtotal": 1200,
+        "tax": 204,
+        "total": 1904
+      },
+      "transport": {
+        "transportMethod": "standard",
+        "transportCharge": 500,
+        "deliveryRegion": "north"
+      },
+      "status": "Completed",
+      "invoice_url": null,
+      "created_at": "2025-12-10T10:52:37.899Z"
+    },
+    {
       "order_id": "ORD-20251210-59060",
       "invoice_number": "INV-202512-59060",
       "buyer": {
@@ -1219,6 +1275,426 @@
       ],
       "invoiceUrl": null,
       "status": "Placed"
+    },
+    {
+      "orderId": "ORD-20251211-00001",
+      "invoiceNumber": "INV-202512-0001",
+      "region": "North",
+      "buyer": {
+        "name": "Demo Buyer",
+        "address": "",
+        "gstin": ""
+      },
+      "items": [
+        {
+          "productId": "gns-01",
+          "name": "Groundnut Shell Pellet (Premium)",
+          "feedstock": "",
+          "pricePerKg": 15,
+          "qty": 100,
+          "scheduledBatches": [
+            {
+              "date": "2025-12-11",
+              "qty": 100,
+              "batchNumber": "BATCH-1765448807239-4154"
+            }
+          ],
+          "lineTotal": 1500
+        }
+      ],
+      "transport": {
+        "mode": "truck",
+        "transportCharge": 3150
+      },
+      "paymentPlan": {
+        "type": "deposit",
+        "depositPct": 30
+      },
+      "payments": [
+        {
+          "id": "PAY-1765448807521-6885",
+          "context": "order:deposit",
+          "dueDate": "2025-12-11",
+          "amount": 1562.4,
+          "status": "pending",
+          "note": "Deposit 30%"
+        },
+        {
+          "id": "PAY-1765448807522-7737",
+          "context": "order:balance",
+          "dueDate": "2025-12-11",
+          "amount": 3645.6,
+          "status": "pending",
+          "note": "Balance on delivery"
+        }
+      ],
+      "totals": {
+        "subtotal": 1500,
+        "tax": 558,
+        "total": 5208
+      },
+      "status": "Placed",
+      "createdAt": "2025-12-11T10:26:47.518Z"
+    },
+    {
+      "orderId": "ORD-20251211-00002",
+      "invoiceNumber": "INV-202512-0002",
+      "region": "East",
+      "buyer": {
+        "name": "Demo Buyer"
+      },
+      "items": [
+        {
+          "productId": "napier-01",
+          "name": "Napier Pellet (Standard)",
+          "feedstock": "",
+          "pricePerKg": 12.5,
+          "qty": 1600,
+          "scheduledBatches": [
+            {
+              "date": "2025-12-11",
+              "qty": 1600,
+              "batchNumber": "BATCH-20251211-4884"
+            }
+          ],
+          "lineTotal": 20000
+        }
+      ],
+      "transport": {
+        "mode": "truck",
+        "transportCharge": 5400
+      },
+      "paymentPlan": {
+        "type": "inst"
+      },
+      "payments": [
+        {
+          "id": "PAY-1765449297157-5811-BATCH-20251211-4884",
+          "context": "batch:BATCH-20251211-4884",
+          "dueDate": "2025-12-11",
+          "amount": 28448,
+          "status": "pending",
+          "note": "Batch BATCH-20251211-4884"
+        }
+      ],
+      "totals": {
+        "subtotal": 20000,
+        "tax": 3048,
+        "total": 28448
+      },
+      "status": "Placed",
+      "createdAt": "2025-12-11T10:34:57.153Z"
+    },
+    {
+      "orderId": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-11T20:15:03.713Z"
+    },
+    {
+      "orderId": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-11T20:15:34.455Z"
+    },
+    {
+      "id": "33dca2f6-0c95-42a6-bf49-9cc256eff688",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-13T06:10:18.152Z"
+    },
+    {
+      "id": "a9a3db22-0b5d-4bef-98af-a67cef3716d8",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-13T06:12:24.477Z"
+    },
+    {
+      "id": "a610d59d-a104-45d0-99bc-b9bae53c094b",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-13T06:15:38.865Z"
+    },
+    {
+      "id": "60406d77-23ef-439b-8275-7e290989990f",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-13T06:19:58.913Z"
+    },
+    {
+      "id": "63d04dae-0a6c-4700-a84e-d8f6a21b37b6",
+      "buyerName": "Buyer Co",
+      "buyerContact": "+91 9000000000",
+      "region": null,
+      "transportMode": "truck",
+      "status": "created",
+      "created_at": "2025-12-13T06:20:58.940Z"
     }
-  ]
+  ],
+  "batches": [
+    {
+      "id": "9ae361e9-67b3-47b2-86f4-bc17ce6d0696",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "27350db8-87fd-4eca-821d-eb74669a6c05",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "4f44bc09-ae34-48ba-8f7e-dd4d52e3a5c3",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "3961a6b6-b2f2-481d-ac1b-8cd78a99c53d",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "1f300619-4e25-4702-9464-74d98e100a0c",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "452a6f4b-f8e9-4886-9f5f-e22461e541b9",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "438d7ca8-b0ab-4aa6-ba6f-edbdc6479c36",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "8bde3f83-5817-403f-803e-5b79fa385584",
+      "order_id": "0ca61ffe-6762-4e33-b1e1-b2e50e70af96",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:04.035Z"
+    },
+    {
+      "id": "1d93d224-f31b-44b4-99a8-5e50f47176e5",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "e987e9ba-dbaa-4a19-bbaf-e9583703dbce",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "50653ce1-192d-470a-8f74-65e75977c701",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "398f62c9-364e-4277-b850-9a34fb2d9601",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "efbc4c2b-c8a2-4d0f-8a16-5e316a001868",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "dad146a8-28b0-4342-9a7f-4ed808189a18",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "88e01625-c735-4331-aec4-5df261c07966",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "2a038fc7-595a-4601-91df-5bf905106b86",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "57dfe680-1fa7-47e8-92bc-5b8b1bb28395",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "d0e95be7-a755-4c3e-aa28-dbea2fd808bd",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Coriander Husk Pellets",
+      "qty": 500,
+      "price_per_kg": 10,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "95af48bc-964a-4f17-9e02-36a2e75cca07",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Coriander Husk Pellets",
+      "qty": 500,
+      "price_per_kg": 10,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "11ef63a3-0c95-434b-b298-66222e348ed7",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Coriander Husk Pellets",
+      "qty": 500,
+      "price_per_kg": 10,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "9f3dfe96-364d-4b8f-a3be-bf660262ba30",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "861f0926-4c33-46cb-a78d-68d7bfef0aff",
+      "order_id": "2bcfe062-5930-4f6a-ab13-3b408bb075d7",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-11T20:15:34.636Z"
+    },
+    {
+      "id": "eab9ae94-28d0-4910-97de-793399bf0952",
+      "order_id": "33dca2f6-0c95-42a6-bf49-9cc256eff688",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-13T06:10:18.295Z"
+    },
+    {
+      "id": "3d1810c6-34ac-4b42-9225-7d9c897d4918",
+      "order_id": "a9a3db22-0b5d-4bef-98af-a67cef3716d8",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 1600,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-13T06:12:24.603Z"
+    },
+    {
+      "id": "a9a28f7e-a61b-413d-b854-b7f1fabdf283",
+      "order_id": "a610d59d-a104-45d0-99bc-b9bae53c094b",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 500,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-13T06:15:38.946Z"
+    },
+    {
+      "id": "9ad77e1f-e1cb-4ce4-b012-5efc3ecf5d20",
+      "order_id": "60406d77-23ef-439b-8275-7e290989990f",
+      "product_id": null,
+      "product_name": "Mustard Stalk Pellets",
+      "qty": 2700,
+      "price_per_kg": 13,
+      "created_at": "2025-12-13T06:19:59.004Z"
+    },
+    {
+      "id": "4f0db35d-2b84-4b99-986d-c32e796932fb",
+      "order_id": "63d04dae-0a6c-4700-a84e-d8f6a21b37b6",
+      "product_id": null,
+      "product_name": "Napier Grass Pellets",
+      "qty": 600,
+      "price_per_kg": 12.5,
+      "created_at": "2025-12-13T06:20:59.051Z"
+    }
+  ],
+  "payments": []
 }

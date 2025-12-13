@@ -1,0 +1,156 @@
+/* ---------------------------
+  UI refinement overrides (paste at end of styles/ui.css)
+   - fixes sidebar overlap reliably
+   - centers page content
+   - improves spacing & alignment
+   - tuned columns for orders & order details
+   - brand polish
+  --------------------------- */
+
+  :root {
+    --page-max-width: 1180px;
+    --content-pad: 28px;
+    --orders-left-width: 360px;
+    --orders-right-width: 340px;
+    --main-gap: 28px;
+    --header-height: 64px;
+  }
+  
+  /* FORCE desktop sidebar to be fixed and make main area reserve space */
+  @media (min-width: 980px) {
+    .app-sidebar {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: var(--sidebar-width);
+      z-index: 60;
+      box-shadow: none;
+    }
+  
+    /* ensure top header height doesn't hide the sidebar content */
+    .app-sidebar > * { padding-top: var(--header-height); box-sizing: border-box; }
+  
+    .app-main {
+      margin-left: var(--sidebar-width) !important;
+      min-height: 100vh;
+      padding-top: 0;
+    }
+  }
+  
+  /* Center content area and constrain width */
+  .app-main > main {
+    display: flex;
+    justify-content: center;
+    padding-top: 18px;
+    padding-bottom: 40px;
+  }
+  
+  /* page content container — keeps content centered and consistent */
+  .page-content {
+    width: 100%;
+    max-width: var(--page-max-width);
+    padding-left: var(--content-pad);
+    padding-right: var(--content-pad);
+    box-sizing: border-box;
+  }
+  
+  /* Layout grid tweaks for pages using three-column grid */
+  .page-grid {
+    display: grid;
+    grid-template-columns: var(--orders-left-width) 1fr var(--orders-right-width);
+    gap: var(--main-gap);
+    align-items: start;
+  }
+  
+  /* On smaller screens collapse to single column */
+  @media (max-width: 1100px) {
+    .page-grid { grid-template-columns: 1fr; }
+    .app-main.shifted { transform: none !important; }
+  }
+  
+  /* Orders list column */
+  .page-left { padding-top: 6px; }
+  .page-left .card { padding: 16px; }
+  
+  /* Main details column*/
+  .page-center .card { padding: 20px; border-radius: 14px; }
+  
+  /* Right summary column */
+  .page-right .card { padding: 16px; position: sticky; top: 92px; }
+  
+  /* Card internal spacing */
+  .card h2 { margin-bottom: 8px; color: #0b4b41; }
+  .card h4 { margin-bottom: 12px; color: #09322b; }
+  
+  /* Improve search / clear row */
+  .search { display:flex; gap:10px; align-items:center; }
+  .search .input { min-width: 0; flex: 1 1 auto; }
+  
+  /* Card list visual spacing */
+  .card-list { gap: 14px; }
+  .card-item { padding: 14px; border-radius: 10px; }
+  
+  /* Make summary box visually lighter and aligned */
+  .summary { border-radius: 12px; padding: 14px; background: linear-gradient(180deg,#fff,#fbfffb); }
+  
+  /* Action buttons spacing */
+  .card .btn + .btn { margin-left: 8px; }
+  
+  /* More consistent item-mini layout */
+  .item-mini { display:flex; justify-content:space-between; gap: 12px; align-items:center; padding:12px; }
+  
+  /* Payment card */
+  .payment-card { display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:10px; background: #fff; border:1px solid rgba(6,20,20,0.03); }
+  
+  /* Badge sizing and spacing */
+  .badge { padding:6px 10px; font-size:12px; border-radius:999px; }
+  .badge.completed { color: var(--success); background: rgba(5,150,100,0.06); border-color: rgba(5,150,100,0.06); }
+  .badge.placed { color: var(--brand-green-600); background: rgba(15,157,88,0.06); border-color: rgba(15,157,88,0.06); }
+  
+  /* Visual weight for Outstanding/Paid labels inside list */
+  .card-item .muted { font-size: 12px; }
+  .card-item .price { font-weight:800; }
+  
+  /* Improve header spacing inside cards */
+  .card > .card-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px; }
+  
+  /* Reduce sidebar link font-size and spacing for a compact look */
+  .app-sidebar a, .app-sidebar .nav-link {
+    display:block;
+    padding: 10px 18px;
+    font-size:14px;
+    color: #083a33;
+  }
+  .app-sidebar .nav-link.active { background: linear-gradient(90deg, rgba(15,157,88,0.06), rgba(15,157,88,0.02)); border-left:4px solid var(--brand-green); padding-left:14px; }
+  
+  /* subtle hover for list items */
+  .card-item:hover { box-shadow: 0 12px 28px rgba(3,20,14,0.05); transform: translateY(-3px); }
+  
+  /* fix for any absolute-positioned left nav used previously */
+  nav.sidebar-fixed { position: fixed; left: 0; top: 0; height: 100vh; width: var(--sidebar-width); }
+  
+  /* Make header brand more compact */
+  .header-brand { font-weight:800; color:var(--brand-green); font-size:16px; }
+  
+  /* small screens: ensure overlay closes */
+  @media (max-width: 979px) {
+    .app-main { margin-left: 0 !important; }
+    .page-content { padding-left: 16px; padding-right: 16px; }
+  }
+  
+  /* final helpful utility */
+  .center-block { margin-left: auto; margin-right: auto; }
+  
+  /* Emergency override: hide any leftover sidebar and remove left margin on main */
+.app-sidebar { display: none !important; visibility: hidden !important; }
+.app-main { margin-left: 0 !important; padding-left: 0 !important; }
+
+/* Temporary: if two header elements are rendered, hide the lower duplicate */
+header + header { display: none !important; }
+
+/* Slightly better: if duplicate appears separated by only a small wrapper */
+header ~ header { display: none !important; }
+
+/* If you want to remove the empty gap left by the second header */
+header + main { margin-top: 0 !important; }

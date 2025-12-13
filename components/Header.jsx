@@ -1,25 +1,39 @@
-import Link from 'next/link'
-import { useRouter } from 'next/router'
+import Link from "next/link";
+import { useRouter } from "next/router";
 
-export default function Header(){
-  const router = useRouter()
-  const active = (p) => router.pathname === p ? 'active' : ''
+export default function Header() {
+  const { pathname } = useRouter();
+
+  const nav = [
+    { href: "/", label: "Home" },
+    { href: "/create-order", label: "Create Order" },
+    { href: "/orders", label: "Orders" },
+  ];
 
   return (
-    <header className="header">
-      <div className="brand">
-        <div className="logo">CIC</div>
-        <div>
-          <h1 style={{margin:0,fontSize:'1.5rem',fontWeight:800}}>Pellet Trade Platform</h1>
-          <div className="sub">INR • Scheduling • Invoices • Cienergy</div>
+    <header className="app-header">
+      <div className="header-inner">
+        <div className="brand">
+          <img src="/cienergy-logo.png" alt="Cienergy" />
+          <span>Cienergy</span>
         </div>
-      </div>
 
-      <nav className="nav">
-        <Link href="/"><button className={`nav-btn ${active('/')}`}>Home</button></Link>
-        <Link href="/order"><button className={`nav-btn ${active('/order')}`}>Order</button></Link>
-        <Link href="/orders"><button className={`nav-btn ${active('/orders')}`}>Orders</button></Link>
-      </nav>
+        <nav className="nav">
+          {nav.map((n) => (
+            <Link
+              key={n.href}
+              href={n.href}
+              className={`nav-link ${
+                pathname === n.href ? "active" : ""
+              }`}
+            >
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="platform">Pellet Trade Platform</div>
+      </div>
     </header>
-  )
+  );
 }

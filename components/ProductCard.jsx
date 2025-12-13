@@ -1,36 +1,63 @@
-export default function ProductCard({ product, region, onAdd, onSchedule }){
-    const stock = product.stockByRegion?.[region] || 0
-    return (
-      <div className="card product">
-        <div style={{display:'flex',justifyContent:'space-between',gap:'1.5rem',alignItems:'flex-start'}}>
-          <div style={{flex:1}}>
-            <div style={{display:'flex',gap:'0.75rem',alignItems:'center',marginBottom:'0.5rem',flexWrap:'wrap'}}>
-              <span className="badge">{product.feedstock}</span>
-              <strong style={{fontSize:'1.125rem',color:'#111827'}}>{product.name}</strong>
-            </div>
-            <div className="small" style={{marginTop:'0.25rem',lineHeight:1.6}}>
-              Supplier: <strong>{product.supplier}</strong> • Moisture: {product.moisture}% • {product.calorific} kcal/kg
-            </div>
-          </div>
-          <div style={{textAlign:'right',minWidth:'200px'}}>
-            <div style={{fontWeight:800,fontSize:'1.5rem',color:'#0b66a3',marginBottom:'0.25rem'}}>
-              {new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(product.pricePerKg)}/kg
-            </div>
-            <div className="small" style={{marginBottom:'0.5rem'}}>Min: {product.minOrderKg} kg</div>
-            <div style={{marginBottom:'1rem'}}>
-              {stock>0 ? (
-                <div style={{color:'#10b981',fontWeight:600}} className="small">✓ In stock • {stock} kg</div>
-              ) : (
-                <div style={{color:'#f59e0b',fontWeight:600}} className="small">⏱ Lead time: {product.leadTimeDays} days</div>
-              )}
-            </div>
-            <div style={{display:'flex',gap:'0.5rem',justifyContent:'flex-end'}}>
-              <button className="btn" onClick={onAdd} style={{padding:'0.5rem 1rem',fontSize:'0.875rem'}}>Add</button>
-              <button className="btn ghost" onClick={onSchedule} style={{padding:'0.5rem 1rem',fontSize:'0.875rem'}}>Schedule</button>
-            </div>
-          </div>
+// components/ProductCard.jsx
+import React from 'react';
+
+export default function ProductCard({ product, region, onAdd, onSchedule }) {
+  // product expected shape from /api/products:
+  // { productId, name, feedstock, pricePerKg, minOrderKg, leadTimeDays, stockByRegion }
+
+  const regionKey = (region || '').toLowerCase();
+  const stock = Number(product.stockByRegion?.[regionKey] ?? 0);
+
+  const payloadForAdd = {
+    productId: product.productId,
+    name: product.name,
+    pricePerKg: product.pricePerKg,
+    minOrderKg: product.minOrderKg,
+    feedstock: product.feedstock,
+    leadTimeDays: product.leadTimeDays,
+    stockByRegion: product.stockByRegion
+  };
+
+  const payloadForSchedule = {
+    productId: product.productId,
+    name: product.name,
+    pricePerKg: product.pricePerKg,
+    minOrderKg: product.minOrderKg,
+    leadTimeDays: product.leadTimeDays
+  };
+
+  return (
+    <div style={{
+      padding:12,
+      border:'1px solid #f3f4f6',
+      borderRadius:10,
+      display:'flex',
+      justifyContent:'space-between',
+      alignItems:'center',
+      background:'#fff'
+    }}>
+      <div style={{ flex:1 }}>
+        <div style={{ fontWeight:700, fontSize:15 }}>{product.name}</div>
+        <div style={{ color:'#6b7280', marginTop:4 }}>{product.feedstock}</div>
+        <div style={{ marginTop:10, fontWeight:800 }}>₹ {Number(product.pricePerKg).toFixed(2)}/kg</div>
+        <div style={{ color:'#6b7280', fontSize:13, marginTop:6 }}>
+          {stock > 0 ? `In-region: ${stock} kg` : `Lead time: ${product.leadTimeDays} days`}
         </div>
       </div>
-    )
-  }
-  
+
+      <div style={{ display:'flex', flexDirection:'column', gap:8, marginLeft:12 }}>
+        <button
+          onClick={() => onAdd(payloadForAdd)}
+          style={{ background:'#0b69a3', color:'#fff', border:0, padding:'8px 12px', borderRadius:8 }}>
+          Add
+        </button>
+
+        <button
+          onClick={() => onSchedule(payloadForSchedule)}
+          style={{ background:'#fff', color:'#0b69a3', border:'1px solid #0b69a3', padding:'6px 10px', borderRadius:8 }}>
+          Schedule
+        </button>
+      </div>
+    </div>
+  );
+}

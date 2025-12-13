@@ -1,167 +1,181 @@
 // pages/api/payments.js
-import fs from 'fs-extra'
-import path from 'path'
+import formidable from "formidable";
+import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
+import { supabaseAdmin } from "../../lib/supabaseServer";
+import { generateInvoiceBuffer } from "../../lib/invoice";
 
-const ORDERS_FILE = path.join(process.cwd(), 'orders.json')
+export const config = { api: { bodyParser: false } };
 
-// Optional Stripe integration
-let stripe = null
-if (process.env.STRIPE_SECRET_KEY) {
+/* helper: normalize a form field that may be an array or JSON string */
+function normField(x) {
+  if (Array.isArray(x)) return x[0];
+  if (typeof x === "string") {
+    // sometimes libraries send JSON encoded strings like '["id"]'
+    try {
+      const p = JSON.parse(x);
+      if (Array.isArray(p)) return p[0];
+      return p;
+    } catch (e) {
+      return x;
+    }
+  }
+  return x;
+}
+
+/* wrapper to parse formidable forms as Promise */
+function parseForm(req) {
+  return new Promise((resolve, reject) => {
+    const form = formidable({ multiples: false, keepExtensions: true });
+    form.parse(req, (err, fields, files) => {
+      if (err) return reject(err);
+      resolve({ fields, files });
+    });
+  });
+}
+
+/* Safe helper to create a signed URL if storage key exists */
+async function createSignedUrl(bucket, path, expiresSec = 60 * 60) {
   try {
-    // lazy require to avoid startup error if not installed
-    // If you want Stripe, run: npm install stripe
-    // and set STRIPE_SECRET_KEY in your environment
-    // (e.g., .env.local for local dev)
-    // The code below will throw if stripe package is not installed.
-    // That's expected; if you plan to use Stripe, install the package.
-    // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-    const Stripe = require('stripe')
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' })
+    const { data, error } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, expiresSec);
+    if (error) return null;
+    return data?.signedUrl || null;
   } catch (e) {
-    console.warn('Stripe package not installed or failed to init. Run `npm install stripe` if you want Stripe support.', e.message)
-    stripe = null
+    return null;
   }
 }
 
-async function readOrders() {
-  await fs.ensureFile(ORDERS_FILE)
-  const data = await fs.readJson(ORDERS_FILE).catch(() => ({ orders: [] }))
-  return data
-}
+/* main handler */
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-async function writeOrders(data) {
-  await fs.writeJson(ORDERS_FILE, data, { spaces: 2 })
-}
+  // guard: supabaseAdmin
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase server client not configured" });
 
-function findOrder(data, orderId) {
-    if(!data || !data.orders) return undefined
-    return (data.orders || []).find(o =>
-      o.orderId === orderId || o.order_id === orderId || o.orderId === (o.order_id) || false
-    )
-  }
-  
-
-// Merge payments by dueDate helper (used to compute aggregated payments if needed)
-function mergePayments(payList) {
-  const map = {}
-  payList.forEach(p => {
-    const k = p.dueDate
-    if (!map[k]) map[k] = { dueDate: p.dueDate, amount: 0, details: [] }
-    map[k].amount += p.amount
-    map[k].details.push({ note: p.note || '', itemId: p.itemId, amount: p.amount })
-  })
-  return Object.values(map)
-}
-
-// POST /api/payments?action=create-session
-// Body: { orderId, paymentDueDate, amount, currency }
-// Returns: { url } (Stripe checkout url) or error
-// NOTE: This creates a simple single-line Checkout session for the requested amount.
-// It DOES NOT auto-mark order payments as paid; after real Stripe payment you should
-// update order state via webhook (not implemented here). For demo we provide a mock mark-paid.
-async function createStripeSession(req, res) {
-  if (!stripe) return res.status(400).json({ error: 'Stripe not configured (STRIPE_SECRET_KEY missing or stripe package not installed)' })
-  const { orderId, paymentDueDate, amount, currency = 'INR' } = req.body || {}
-  if (!orderId || !amount) return res.status(400).json({ error: 'orderId and amount are required' })
-
-  // Create a Checkout Session
   try {
-    // Stripe wants amounts in smallest currency unit; INR -> paise
-    const unit_amount = Math.round(Number(amount) * 100)
-    const successUrl = `${process.env.NEXT_PUBLIC_BASE_URL || ''}/orders?highlight=${encodeURIComponent(orderId)}`
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency,
-            product_data: { name: `Payment for ${orderId} — due ${paymentDueDate || ''}` },
-            unit_amount,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: successUrl + '&paid=1',
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/orders?highlight=${encodeURIComponent(orderId)}&paid=0`,
-      metadata: {
-        orderId,
-        paymentDueDate: paymentDueDate || '',
-      }
-    })
-    return res.status(200).json({ url: session.url })
-  } catch (err) {
-    console.error('Stripe create session error', err)
-    return res.status(500).json({ error: err.message || 'stripe error' })
-  }
-}
+    const { fields, files } = await parseForm(req);
 
-// POST /api/payments?action=mark-paid
-// Body: { orderId, dueDate, amount, receiptId (optional) }
-// Marks the matching payment (by dueDate) as paid and stores paidAt/receiptId
-async function markPaymentAsPaid(req, res) {
-  const { orderId, dueDate, amount, receiptId } = req.body || {}
-  if (!orderId || !dueDate) return res.status(400).json({ error: 'orderId and dueDate required' })
+    // normalize fields
+    const rawOrder = normField(fields.orderId || fields.order_id || fields.order);
+    const orderId = rawOrder ? String(rawOrder).trim() : null;
 
-  const data = await readOrders()
-  const order = findOrder(data, orderId)
-  if (!order) return res.status(404).json({ error: 'order not found' })
+    const rawAmount = normField(fields.amount);
+    const amount = rawAmount !== undefined && rawAmount !== null ? Number(rawAmount) : NaN;
 
-  // find matching payment by dueDate
-  const pIndex = (order.payments || []).findIndex(p => p.dueDate === dueDate && (amount == null || Number(p.amount) === Number(amount)))
-  if (pIndex === -1) {
-    // fallback: if dueDate not found try approximate match
-    // try to find by amount if provided
-    if (amount != null) {
-      const idx = (order.payments || []).findIndex(p => Number(p.amount) === Number(amount))
-      if (idx !== -1) {
-        order.payments[idx].status = 'paid'
-        order.payments[idx].paidAt = new Date().toISOString()
-        order.payments[idx].receiptId = receiptId || `RECEIPT-${Date.now()}`
-        await writeOrders(data)
-        return res.status(200).json({ ok: true, orderId, payment: order.payments[idx] })
+    const paymentMode = String(normField(fields.paymentMode || fields.mode || "manual") || "manual");
+    const paymentType = String(normField(fields.paymentType || "full") || "full"); // full | deposit | installment
+    const rawInstallment = normField(fields.installmentNo || fields.installment_no);
+    const installmentNo = rawInstallment !== undefined && rawInstallment !== null && rawInstallment !== "" ? parseInt(rawInstallment, 10) : null;
+    const rawBatch = normField(fields.batchId || fields.batch_id);
+    const batchId = rawBatch ? String(rawBatch) : null;
+
+    if (!orderId) return res.status(400).json({ error: "orderId required" });
+    if (!amount || Number.isNaN(amount) || amount <= 0) return res.status(400).json({ error: "amount must be a positive number" });
+
+    // create payment id
+    const paymentId = uuidv4();
+    let storageKey = null;
+
+    // handle file upload if present (expects field name 'file')
+    if (files && files.file) {
+      try {
+        const file = files.file;
+        const buffer = fs.readFileSync(file.path);
+        const filename = `receipts/receipts/${paymentId}.pdf`;
+        const { error: uploadErr } = await supabaseAdmin.storage.from("receipts").upload(filename, buffer, {
+          upsert: true,
+          contentType: "application/pdf",
+        });
+        if (uploadErr) {
+          console.error("Receipt upload failed:", uploadErr);
+          // don't block - continue but leave storageKey null
+        } else {
+          storageKey = filename;
+        }
+      } catch (e) {
+        console.error("Receipt processing error:", e);
       }
     }
-    return res.status(404).json({ error: 'payment not found for given dueDate/amount' })
+
+    // prepare payment row
+    const now = new Date().toISOString();
+    const paymentRow = {
+      id: paymentId,
+      order_id: orderId,
+      amount: Number(amount),
+      payment_mode: paymentMode,
+      status: "recorded",
+      storage_key: storageKey,
+      created_at: now,
+    };
+    if (installmentNo !== null && !Number.isNaN(installmentNo)) paymentRow.installment_no = installmentNo;
+    if (batchId) paymentRow.batch_id = batchId;
+
+    // insert row
+    const { error: insertErr } = await supabaseAdmin.from("payments").insert(paymentRow);
+    if (insertErr) {
+      console.error("payments insert error", insertErr);
+      return res.status(500).json({ error: "Failed to record payment", details: insertErr });
+    }
+
+    // Build signed receipt url if file uploaded
+    let receiptUrl = null;
+    if (storageKey) {
+      receiptUrl = await createSignedUrl("receipts", storageKey, 60 * 60);
+    }
+
+    // Post-payment actions (best-effort)
+    let invoiceUrl = null;
+    try {
+      if (paymentType === "installment" && installmentNo !== null) {
+        // fetch relevant data for invoice (best-effort)
+        const [{ data: batches }] = [await supabaseAdmin.from("order_batches").select("*").eq("order_id", orderId)];
+        const [{ data: payments }] = [await supabaseAdmin.from("payments").select("*").eq("order_id", orderId)];
+        const { data: orderData } = await supabaseAdmin.from("orders").select("*").eq("id", orderId).limit(1);
+        const ord = (orderData && orderData[0]) || { id: orderId, created_at: now, buyer_id: null, region: null, transport_mode: null };
+
+        // generate invoice buffer - for now include all batches; if you track mapping of installments->batches you can filter here
+        const buffer = await generateInvoiceBuffer(
+          { id: ord.id, created_at: ord.created_at, buyer_name: ord.buyer_name || null, buyer_id: ord.buyer_id || null, region: ord.region, transport_mode: ord.transport_mode },
+          batches || [],
+          payments || []
+        );
+
+        const invoicePath = `invoices/invoices/${orderId}/installment_${installmentNo}_${paymentId}.pdf`;
+        const { error: upErr } = await supabaseAdmin.storage.from("invoices").upload(invoicePath, buffer, {
+          upsert: true,
+          contentType: "application/pdf",
+        });
+        if (!upErr) {
+          invoiceUrl = await createSignedUrl("invoices", invoicePath, 60 * 60);
+        } else {
+          console.error("installment invoice upload error", upErr);
+        }
+
+        // optionally update order_installments to mark paid (best-effort; only if such table exists and columns present)
+        try {
+          await supabaseAdmin
+            .from("order_installments")
+            .update({ /* optional: paid: true, paid_at: now, paid_amount: amount */ })
+            .eq("order_id", orderId)
+            .eq("installment_no", installmentNo);
+        } catch (e) {
+          // ignore - optional update
+        }
+      } else if (paymentType === "full" || paymentType === "deposit") {
+        // optional: generate order-level receipt or invoice if needed
+        // skip heavy ops here to keep API responsive
+      }
+    } catch (e) {
+      console.error("post-payment follow-up error:", e);
+      // not fatal - continue
+    }
+
+    // Respond with useful info
+    return res.status(201).json({ paymentId, receiptUrl, invoiceUrl });
+  } catch (err) {
+    console.error("payments handler fatal error:", err);
+    // Always send a response on unexpected failures
+    return res.status(500).json({ error: "Unexpected server error", details: String(err) });
   }
-
-  const payment = order.payments[pIndex]
-  payment.status = 'paid'
-  payment.paidAt = new Date().toISOString()
-  payment.receiptId = receiptId || `RECEIPT-${Date.now()}`
-
-  // Optionally: update order.status if all payments paid
-  const allPaid = (order.payments || []).every(p => p.status === 'paid')
-  if (allPaid) order.status = 'Completed'
-
-  await writeOrders(data)
-  return res.status(200).json({ ok: true, orderId, payment })
-}
-
-// POST /api/payments?action=mock-pay
-// Body: { orderId, dueDate } — convenience endpoint used by demo to mark as paid
-async function mockPay(req, res) {
-  // simply call markPaymentAsPaid handler logic
-  return markPaymentAsPaid(req, res)
-}
-
-// Router
-export default async function handler(req, res) {
-  const action = req.query.action || (req.method === 'POST' ? req.body?.action : undefined)
-
-  if (req.method === 'GET') {
-    // simple health/status or return Stripe enabled flag
-    return res.status(200).json({ stripeEnabled: !!stripe })
-  }
-
-  if (req.method === 'POST') {
-    if (action === 'create-session') return createStripeSession(req, res)
-    if (action === 'mark-paid') return markPaymentAsPaid(req, res)
-    if (action === 'mock-pay') return mockPay(req, res)
-
-    return res.status(400).json({ error: 'unknown action. valid: create-session, mark-paid, mock-pay' })
-  }
-
-  res.setHeader('Allow', ['GET','POST'])
-  res.status(405).end('Method Not Allowed')
 }

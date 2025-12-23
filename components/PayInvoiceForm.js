@@ -3,8 +3,25 @@ import { useState } from "react";
 export default function PayInvoiceForm({ invoiceId }) {
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState("NEFT");
+  const [file, setFile] = useState(null);
 
   async function submitPayment() {
+    if (!file) {
+      alert("Upload payment proof");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("invoiceId", invoiceId);
+    formData.append("file", file);
+
+    const uploadRes = await fetch("/api/uploads/payment-proof", {
+      method: "POST",
+      body: formData,
+    });
+
+    const { proofUrl } = await uploadRes.json();
+
     await fetch("/api/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -12,6 +29,7 @@ export default function PayInvoiceForm({ invoiceId }) {
         invoiceId,
         amount: Number(amount),
         mode,
+        proofUrl,
       }),
     });
 
@@ -25,13 +43,16 @@ export default function PayInvoiceForm({ invoiceId }) {
         value={amount}
         onChange={e => setAmount(e.target.value)}
       />
+
       <select value={mode} onChange={e => setMode(e.target.value)}>
-        <option value="NEFT">NEFT</option>
-        <option value="RTGS">RTGS</option>
-        <option value="UPI">UPI</option>
+        <option>NEFT</option>
+        <option>RTGS</option>
+        <option>UPI</option>
       </select>
 
-      <button onClick={submitPayment}>Pay Invoice</button>
+      <input type="file" onChange={e => setFile(e.target.files[0])} />
+
+      <button onClick={submitPayment}>Submit Payment</button>
     </div>
   );
 }

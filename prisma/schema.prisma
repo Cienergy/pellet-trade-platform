@@ -1,26 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client"
-  output   = "../lib/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 model Organization {
   id        String   @id @default(uuid())
   name      String
@@ -34,7 +11,7 @@ model Organization {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  role      String   // admin | finance | viewer
+  role      String
   orgId     String
   createdAt DateTime @default(now())
 
@@ -43,20 +20,24 @@ model User {
 
 model Product {
   id        String   @id @default(uuid())
-  type      String   // pellet | briquette
+  type      String
   grade     String
   cvKcal    Float
   ashPct    Float
   moisture  Float
   pricePMT  Float
   active    Boolean  @default(true)
+
+  batches   OrderBatch[]
 }
+
+
 
 model Order {
   id        String   @id @default(uuid())
   orgId     String
-  type      String   // scheduled | non_scheduled
-  status    String   // created | active | closed
+  type      String
+  status    String
   createdAt DateTime @default(now())
 
   org       Organization @relation(fields: [orgId], references: [id])
@@ -77,27 +58,27 @@ model OrderBatch {
 }
 
 model Invoice {
-  id          String   @id @default(uuid())
-  batchId     String   @unique
-  number      String
-  amount      Float
-  status      String   // pending | partial | paid
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  batchId   String   @unique
+  number    String
+  amount    Float
+  status    String
+  createdAt DateTime @default(now())
 
-  batch       OrderBatch @relation(fields: [batchId], references: [id])
-  payments    Payment[]
+  batch     OrderBatch @relation(fields: [batchId], references: [id])
+  payments  Payment[]
 }
 
 model Payment {
-  id          String   @id @default(uuid())
-  invoiceId   String
-  amount      Float
-  mode        String
-  proofUrl    String?
-  verified    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  invoiceId String
+  amount    Float
+  mode      String
+  proofUrl  String?
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
 }
 
 model AuditLog {

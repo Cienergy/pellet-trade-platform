@@ -1,31 +1,39 @@
 const { prisma } = require("../../../lib/prisma");
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).end();
+  if (req.method === "GET") {
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        batches: {
+          include: {
+            product: true,
+            invoice: {
+              include: {
+                payments: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return res.status(200).json(orders);
   }
 
-  const { orgId, type } = req.body;
+  if (req.method === "POST") {
+    const { orgId, type } = req.body;
 
-  if (!orgId || !type) {
-    return res.status(400).json({ error: "orgId and type required" });
+    if (!orgId || !type) {
+      return res.status(400).json({ error: "orgId and type required" });
+    }
+
+    const order = await prisma.order.create({
+      data: { orgId, type, status: "created" },
+    });
+
+    return res.status(201).json(order);
   }
 
-  const order = await prisma.order.create({
-    data: {
-      orgId,
-      type, // scheduled | non_scheduled
-      status: "created",
-    },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      entity: "order",
-      entityId: order.id,
-      action: "created",
-    },
-  });
-
-  return res.status(201).json(order);
+  return res.status(405).end();
 }

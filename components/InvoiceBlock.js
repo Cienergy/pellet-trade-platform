@@ -30,3 +30,17 @@ export default function InvoiceBlock({ invoice }) {
     </div>
   );
 }
+
+{!p.verified && (user.role === "finance" || user.role === "admin") && (
+    <button
+      onClick={() =>
+        fetch(`/api/payments/${p.id}/verify`, {
+          method: "POST",
+          headers: { "x-user-role": user.role },
+        })
+      }
+    >
+      Verify
+    </button>
+  )}
+  

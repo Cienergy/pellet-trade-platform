@@ -1,14 +1,12 @@
 const { prisma } = require("../../../lib/prisma");
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).end();
-  }
+  if (req.method !== "POST") return res.status(405).end();
 
   const { invoiceId, amount, mode, proofUrl } = req.body;
 
-  if (!invoiceId || !amount || !mode) {
-    return res.status(400).json({ error: "Invalid payment payload" });
+  if (!invoiceId || !amount || !mode || !proofUrl) {
+    return res.status(400).json({ error: "invoiceId, amount, mode, proofUrl required" });
   }
 
   const payment = await prisma.payment.create({

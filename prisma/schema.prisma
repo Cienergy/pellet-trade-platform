@@ -11,6 +11,7 @@ model Organization {
   id        String   @id @default(uuid())
   name      String
   gst       String?
+  state     String
   createdAt DateTime @default(now())
 
   users     User[]
@@ -76,8 +77,8 @@ model Invoice {
   number        String
 
   subtotal      Float
-  gstType       String   // CGST_SGST | IGST
-  gstRate       Float    // e.g. 5, 12, 18
+  gstType       String
+  gstRate       Float
   gstAmount     Float
   totalAmount   Float
 

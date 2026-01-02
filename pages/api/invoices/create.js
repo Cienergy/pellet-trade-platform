@@ -6,15 +6,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { batchId, gstRate, buyerState, sellerState } = req.body;
+  const { batchId, gstRate } = req.body;
 
-  if (!batchId || !gstRate || !buyerState || !sellerState) {
+  if (!batchId || !gstRate) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  // Fetch authoritative data
   const batch = await prisma.orderBatch.findUnique({
     where: { id: batchId },
-    include: { product: true }
+    include: {
+      product: true,
+      order: { include: { org: true } }
+    }
   });
 
   if (!batch) {
@@ -25,8 +29,8 @@ export default async function handler(req, res) {
 
   const gst = calculateGST({
     subtotal,
-    buyerState,
-    sellerState,
+    buyerState: batch.order.org.state,
+    sellerState: "KA", // Cienergy state (make env later)
     gstRate
   });
 
@@ -39,17 +43,19 @@ export default async function handler(req, res) {
       gstRate,
       gstAmount: gst.gstAmount,
       totalAmount: gst.totalAmount,
-      status: "ISSUED"
+      status: "ISSUED",
+      erpStatus: "PENDING"
     }
   });
 
+  // ERP hook (non-blocking, Phase-1)
   await prisma.auditLog.create({
     data: {
       entity: "Invoice",
       entityId: invoice.id,
-      action: "CREATED"
+      action: "ERP_PUSH_QUEUED"
     }
   });
 
-  res.status(201).json(invoice);
+  return res.status(201).json(invoice);
 }

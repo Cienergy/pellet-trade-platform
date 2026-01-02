@@ -1,3 +1,12 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
@@ -20,18 +29,22 @@ model User {
 
 model Product {
   id        String   @id @default(uuid())
+  sku       String   @unique
+  name      String
   type      String
   grade     String
-  cvKcal    Float
+
+  cvMin     Float
+  cvMax     Float
   ashPct    Float
   moisture  Float
   pricePMT  Float
+
   active    Boolean  @default(true)
+  createdAt DateTime @default(now())
 
   batches   OrderBatch[]
 }
-
-
 
 model Order {
   id        String   @id @default(uuid())
@@ -58,15 +71,21 @@ model OrderBatch {
 }
 
 model Invoice {
-  id        String   @id @default(uuid())
-  batchId   String   @unique
-  number    String
-  amount    Float
-  status    String
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  batchId       String   @unique
+  number        String
 
-  batch     OrderBatch @relation(fields: [batchId], references: [id])
-  payments  Payment[]
+  subtotal      Float
+  gstType       String   // CGST_SGST | IGST
+  gstRate       Float    // e.g. 5, 12, 18
+  gstAmount     Float
+  totalAmount   Float
+
+  status        String
+  createdAt     DateTime @default(now())
+
+  batch         OrderBatch @relation(fields: [batchId], references: [id])
+  payments      Payment[]
 }
 
 model Payment {
@@ -86,6 +105,6 @@ model AuditLog {
   entity    String
   entityId  String
   action    String
-  actorId  String?
+  actorId   String?
   createdAt DateTime @default(now())
 }

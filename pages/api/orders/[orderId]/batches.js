@@ -1,42 +1,47 @@
-const { prisma } = require("../../../../lib/prisma");
+import { prisma } from "../../../../lib/prisma";
+import { reserveInventoryOrFail } from "../../../../lib/inventory";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).end();
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { orderId } = req.query;
-  const { productId, quantityMT, deliveryAt, amount } = req.body;
+  const { productId, quantityMT, deliveryAt } = req.body;
 
-  if (!productId || !quantityMT || !amount) {
+  if (!productId || !quantityMT) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const batch = await prisma.orderBatch.create({
-    data: {
-      orderId,
-      productId,
-      quantityMT,
-      deliveryAt: deliveryAt ? new Date(deliveryAt) : null,
-    },
-  });
+  try {
+    const batch = await prisma.$transaction(async (tx) => {
+      // 1. Lock & reserve inventory
+      await reserveInventoryOrFail(tx, productId, quantityMT);
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      batchId: batch.id,
-      number: `INV-${Date.now()}`,
-      amount,
-      status: "pending",
-    },
-  });
+      // 2. Create batch ONLY after inventory lock
+      const createdBatch = await tx.orderBatch.create({
+        data: {
+          orderId,
+          productId,
+          quantityMT,
+          deliveryAt: deliveryAt ? new Date(deliveryAt) : null
+        }
+      });
 
-  await prisma.auditLog.create({
-    data: {
-      entity: "invoice",
-      entityId: invoice.id,
-      action: "auto_created",
-    },
-  });
+      // 3. Audit
+      await tx.auditLog.create({
+        data: {
+          entity: "OrderBatch",
+          entityId: createdBatch.id,
+          action: "CREATED_WITH_INVENTORY_LOCK"
+        }
+      });
 
-  return res.status(201).json({ batch, invoice });
+      return createdBatch;
+    });
+
+    return res.status(201).json(batch);
+  } catch (err) {
+    return res.status(409).json({ error: err.message });
+  }
 }

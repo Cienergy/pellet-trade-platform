@@ -44,7 +44,20 @@ model Product {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  inventory Inventory?
   batches   OrderBatch[]
+}
+
+model Inventory {
+  id           String   @id @default(uuid())
+  productId    String   @unique
+
+  availableMT  Float
+  reservedMT   Float    @default(0)
+
+  updatedAt    DateTime @updatedAt
+
+  product      Product  @relation(fields: [productId], references: [id])
 }
 
 model Order {

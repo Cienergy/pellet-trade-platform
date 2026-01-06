@@ -11,96 +11,88 @@ model Organization {
   id        String   @id @default(uuid())
   name      String
   gst       String?
-  state     String
   createdAt DateTime @default(now())
-
-  users     User[]
+  state     String
   orders    Order[]
+  users     User[]
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  role      String
-  orgId     String
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         String
+  orgId        String
+  createdAt    DateTime @default(now())
 
-  org       Organization @relation(fields: [orgId], references: [id])
+  org          Organization @relation(fields: [orgId], references: [id])
 }
 
+
 model Product {
-  id        String   @id @default(uuid())
-  sku       String   @unique
+  id        String       @id @default(uuid())
+  sku       String       @unique
   name      String
   type      String
   grade     String
-
-  cvMin     Float
-  cvMax     Float
+  cvMin     Int
+  cvMax     Int
   ashPct    Float
   moisture  Float
   pricePMT  Float
-
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-
+  active    Boolean      @default(true)
   inventory Inventory?
   batches   OrderBatch[]
 }
 
 model Inventory {
-  id           String   @id @default(uuid())
-  productId    String   @unique
-
-  availableMT  Float
-  reservedMT   Float    @default(0)
-
-  updatedAt    DateTime @updatedAt
-
-  product      Product  @relation(fields: [productId], references: [id])
+  id          String   @id @default(uuid())
+  productId   String   @unique
+  availableMT Float
+  reservedMT  Float    @default(0)
+  updatedAt   DateTime @updatedAt
+  product     Product  @relation(fields: [productId], references: [id])
 }
 
 model Order {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   orgId     String
   type      String
   status    String
-  createdAt DateTime @default(now())
-
+  createdAt DateTime     @default(now())
   org       Organization @relation(fields: [orgId], references: [id])
   batches   OrderBatch[]
 }
 
 model OrderBatch {
-  id          String   @id @default(uuid())
-  orderId     String
-  productId   String
-  quantityMT  Float
-  deliveryAt  DateTime?
-  createdAt   DateTime @default(now())
-
-  order       Order    @relation(fields: [orderId], references: [id])
-  product     Product  @relation(fields: [productId], references: [id])
-  invoice     Invoice?
+  id         String    @id @default(uuid())
+  orderId    String
+  productId  String
+  quantityMT Float
+  deliveryAt DateTime?
+  createdAt  DateTime  @default(now())
+  invoice    Invoice?
+  order      Order     @relation(fields: [orderId], references: [id])
+  product    Product   @relation(fields: [productId], references: [id])
 }
 
 model Invoice {
-  id            String   @id @default(uuid())
-  batchId       String   @unique
-  number        String
+  id          String   @id @default(uuid())
+  batchId     String   @unique
+  number      String
+  subtotal    Float
+  gstType     String
+  gstRate     Float
+  gstAmount   Float
+  totalAmount Float
+  status      String
+  erpStatus   String   @default("PENDING")
+  createdAt   DateTime @default(now())
 
-  subtotal      Float
-  gstType       String
-  gstRate       Float
-  gstAmount     Float
-  totalAmount   Float
-
-  status        String
-  createdAt     DateTime @default(now())
-
-  batch         OrderBatch @relation(fields: [batchId], references: [id])
-  payments      Payment[]
+  batch       OrderBatch @relation(fields: [batchId], references: [id])
+  payments    Payment[]
 }
+
 
 model Payment {
   id        String   @id @default(uuid())
@@ -110,7 +102,6 @@ model Payment {
   proofUrl  String?
   verified  Boolean  @default(false)
   createdAt DateTime @default(now())
-
   invoice   Invoice  @relation(fields: [invoiceId], references: [id])
 }
 

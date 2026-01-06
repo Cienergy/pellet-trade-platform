@@ -4,6 +4,8 @@ import { requireRole } from "../../../../lib/requireRole";
 import { hashPassword } from "../../../../lib/auth";
 
 async function handler(req, res) {
+  console.log("COOKIES:", req.headers.cookie);
+
   if (req.method !== "POST") {
     return res.status(405).end();
   }

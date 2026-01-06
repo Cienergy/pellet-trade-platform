@@ -24,10 +24,10 @@ export default async function handler(req, res) {
 
   res.setHeader(
     "Set-Cookie",
-    serialize("session", JSON.stringify(session), {
+    serialize("userId", user.id, {
       httpOnly: true,
       path: "/",
-      sameSite: "lax"
+      sameSite:"lax",
     })
   );
 

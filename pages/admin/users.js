@@ -10,10 +10,12 @@ export default function AdminUsers() {
   async function createUser() {
     setMsg("Creating...");
     const res = await fetch("/api/admin/users/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, role, orgId, password }),
-    });
+        method: "POST",
+        credentials: "include",   // 🔴 THIS IS THE FIX
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role, orgId, password }),
+      });
+      
 
     const data = await res.json();
     if (!res.ok) {

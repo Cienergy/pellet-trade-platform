@@ -1,6 +1,7 @@
-const { prisma } = require("../../../lib/prisma");
+import { prisma } from "../../../lib/prisma";
+import { requireAuth } from "../../../lib/requireAuth";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === "GET") {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: "desc" },
@@ -37,3 +38,5 @@ export default async function handler(req, res) {
 
   return res.status(405).end();
 }
+
+export default requireAuth(handler);

@@ -1,7 +1,10 @@
 import { prisma } from "../../../lib/prisma";
 import { calculateGST } from "../../../lib/gst";
+import { requireAuth } from "../../../lib/requireAuth";
+import { requireRole } from "../../../lib/requireRole";
 
-export default async function handler(req, res) {
+export default requireAuth(
+    requireRole(["admin", "finance"])(async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -58,4 +61,4 @@ export default async function handler(req, res) {
   });
 
   return res.status(201).json(invoice);
-}
+}))

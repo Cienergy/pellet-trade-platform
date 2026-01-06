@@ -1,6 +1,7 @@
 const { prisma } = require("../../../../lib/prisma");
 
-export default async function handler(req, res) {
+export default requireAuth(
+  requireRole(["admin", "finance"])(async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   // TEMP: replace with real auth later
@@ -26,4 +27,4 @@ export default async function handler(req, res) {
   });
 
   return res.json(payment);
-}
+}))

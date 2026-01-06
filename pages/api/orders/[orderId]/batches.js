@@ -1,7 +1,10 @@
 import { prisma } from "../../../../lib/prisma";
 import { reserveInventoryOrFail } from "../../../../lib/inventory";
+import { requireAuth } from "../../../../lib/requireAuth";
+import { requireRole } from "../../../../lib/requireRole";
 
-export default async function handler(req, res) {
+export default requireAuth(
+  requireRole(["admin", "ops"])(async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -45,3 +48,4 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: err.message });
   }
 }
+))

@@ -1,5 +1,5 @@
 import { authenticateUser } from "../../../lib/auth";
-import { serialize } from "cookie";
+import { setSession } from "../../../lib/session";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -16,20 +16,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  const session = {
+  setSession(res, {
     userId: user.id,
     role: user.role,
-    orgId: user.orgId
-  };
-
-  res.setHeader(
-    "Set-Cookie",
-    serialize("userId", user.id, {
-      httpOnly: true,
-      path: "/",
-      sameSite:"lax",
-    })
-  );
+    orgId: user.orgId,
+  });
 
   res.json({ success: true });
 }

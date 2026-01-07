@@ -1,13 +1,6 @@
-import { serialize } from "cookie";
+import { clearSession } from "../../../lib/session";
 
 export default function handler(req, res) {
-  res.setHeader(
-    "Set-Cookie",
-    serialize("userId", "", {
-      path: "/",
-      expires: new Date(0),
-    })
-  );
-
+  clearSession(res);
   res.json({ success: true });
 }

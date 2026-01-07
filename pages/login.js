@@ -1,63 +1,51 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const router = useRouter();
 
-  async function login(e) {
+  async function submit(e) {
     e.preventDefault();
     setError("");
 
     const res = await fetch("/api/auth/login", {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await res.json();
     if (!res.ok) {
-      setError(data.error || "Login failed");
+      const j = await res.json();
+      setError(j.error || "Login failed");
       return;
     }
 
-    router.push("/admin/users");
+    router.push("/dashboard");
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form
-        onSubmit={login}
-        className="bg-white p-6 rounded shadow w-80 space-y-4"
-      >
-        <h1 className="text-xl font-semibold text-center">Trade Hub Login</h1>
-
+    <div style={{ maxWidth: 360, margin: "100px auto" }}>
+      <h1>Cienergy Customer Hub</h1>
+      <form onSubmit={submit}>
         <input
-          className="border p-2 w-full"
           placeholder="Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
+          style={{ width: "100%", marginBottom: 8 }}
         />
-
         <input
-          className="border p-2 w-full"
-          type="password"
           placeholder="Password"
+          type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
+          style={{ width: "100%", marginBottom: 8 }}
         />
-
-        {error && <div className="text-red-600 text-sm">{error}</div>}
-
-        <button className="bg-black text-white w-full py-2 rounded">
-          Login
-        </button>
+        <button style={{ width: "100%" }}>Login</button>
       </form>
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }

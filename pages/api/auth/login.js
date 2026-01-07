@@ -1,5 +1,5 @@
 import { authenticateUser } from "../../../lib/auth";
-import { setSession } from "../../../lib/session";
+import { createSession } from "../../../lib/session";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -16,11 +16,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  setSession(res, {
+  createSession(res, {
     userId: user.id,
     role: user.role,
     orgId: user.orgId,
   });
 
-  res.json({ success: true });
+  return res.status(200).json({ success: true });
 }

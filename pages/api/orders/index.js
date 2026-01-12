@@ -1,11 +1,10 @@
 import { prisma } from "../../../lib/prisma";
 import requireAuth from "../../../lib/requireAuth";
 
-console.log('requireAuth =', requireAuth)
-
 async function handler(req, res) {
-  const { role, orgId } = req.session;
+  const { role, orgId, userId } = req.user;
 
+  // ---------- GET ORDERS ----------
   if (req.method === "GET") {
     const where =
       role === "admin" || role === "finance" || role === "ops"
@@ -29,9 +28,11 @@ async function handler(req, res) {
       },
     });
 
-    return res.status(200).json(orders);
+    // 🔒 ALWAYS return a stable shape
+    return res.status(200).json({ orders });
   }
 
+  // ---------- CREATE ORDER (BUYER ONLY) ----------
   if (req.method === "POST") {
     if (role !== "buyer") {
       return res.status(403).json({ error: "Only buyers can create orders" });
@@ -45,12 +46,13 @@ async function handler(req, res) {
     const order = await prisma.order.create({
       data: {
         orgId,
+        buyerId: userId,
         type,
         status: "created",
       },
     });
 
-    return res.status(201).json(order);
+    return res.status(201).json({ order });
   }
 
   return res.status(405).end();

@@ -31,7 +31,7 @@ enum BatchStatus {
 }
 
 /* =========================
-   CORE ENTITIES
+   CORE
 ========================= */
 
 model Organization {
@@ -57,12 +57,14 @@ model User {
 
   org Organization? @relation(fields: [orgId], references: [id])
 
-  ordersCreated  Order[]  @relation("OrderCreatedBy")
-  batchesCreated OrderBatch[] @relation("BatchCreatedBy")
+  ordersCreated     Order[]            @relation("OrderCreatedBy")
+  batchesCreated    OrderBatch[]       @relation("BatchCreatedBy")
+  inventoryUpdates  Inventory[]        @relation("InventoryUpdatedBy")
+  inventoryLogs     InventoryHistory[] @relation("InventoryRecordedBy")
 }
 
 /* =========================
-   PRODUCT & FACTORY
+   PRODUCT & SITE
 ========================= */
 
 model Product {
@@ -78,8 +80,9 @@ model Product {
   pricePMT  Float
   active    Boolean  @default(true)
 
-  inventories Inventory[]
-  batches     OrderBatch[]
+  inventories      Inventory[]
+  inventoryHistory InventoryHistory[]
+  batches          OrderBatch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,43 +95,44 @@ model Site {
   state  String
   active Boolean @default(true)
 
-  inventories Inventory[]
-  batches     OrderBatch[]
+  inventories      Inventory[]
+  inventoryHistory InventoryHistory[]
+  batches          OrderBatch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 /* =========================
-   INVENTORY (ERP-LIKE)
+   INVENTORY (LOCKED)
 ========================= */
 
 model Inventory {
-  id        String   @id @default(uuid())
-  productId String
-  siteId    String
+  id          String   @id @default(uuid())
+  productId   String
+  siteId      String
   availableMT Float
-  updatedAt DateTime @updatedAt
-  updatedBy String
+  updatedAt   DateTime @updatedAt
+  updatedBy   String
 
   product Product @relation(fields: [productId], references: [id])
   site    Site    @relation(fields: [siteId], references: [id])
-  updater User    @relation(fields: [updatedBy], references: [id])
+  updater User    @relation("InventoryUpdatedBy", fields: [updatedBy], references: [id])
 
   @@unique([productId, siteId])
 }
 
 model InventoryHistory {
-  id        String   @id @default(uuid())
-  productId String
-  siteId    String
-  quantity  Float
+  id         String   @id @default(uuid())
+  productId  String
+  siteId     String
+  quantity   Float
   recordedAt DateTime @default(now())
   recordedBy String
 
-  product Product @relation(fields: [productId], references: [id])
-  site    Site    @relation(fields: [siteId], references: [id])
-  recorder User    @relation(fields: [recordedBy], references: [id])
+  product  Product @relation(fields: [productId], references: [id])
+  site     Site    @relation(fields: [siteId], references: [id])
+  recorder User    @relation("InventoryRecordedBy", fields: [recordedBy], references: [id])
 }
 
 /* =========================
@@ -136,11 +140,11 @@ model InventoryHistory {
 ========================= */
 
 model Order {
-  id          String      @id @default(uuid())
-  orgId       String
-  status      OrderStatus @default(CREATED)
-  createdAt   DateTime    @default(now())
-  createdBy   String
+  id        String      @id @default(uuid())
+  orgId     String
+  status    OrderStatus @default(CREATED)
+  createdAt DateTime    @default(now())
+  createdBy String
 
   org     Organization @relation(fields: [orgId], references: [id])
   creator User         @relation("OrderCreatedBy", fields: [createdBy], references: [id])
@@ -163,7 +167,6 @@ model OrderBatch {
   creator User    @relation("BatchCreatedBy", fields: [createdBy], references: [id])
 
   invoice Invoice?
-  payment Payment?
 }
 
 /* =========================
@@ -200,7 +203,7 @@ model Payment {
 }
 
 /* =========================
-   AUDIT (GENERIC)
+   AUDIT
 ========================= */
 
 model AuditLog {

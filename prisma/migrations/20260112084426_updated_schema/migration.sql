@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Order" ALTER COLUMN "status" SET DEFAULT 'CREATED';
+
+-- AlterTable
+ALTER TABLE "Site" ALTER COLUMN "updatedAt" DROP DEFAULT;

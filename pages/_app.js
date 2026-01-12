@@ -1,36 +1,38 @@
+import "../styles/globals.css";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 export default function App({ Component, pageProps }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(undefined); // 👈 IMPORTANT
   const router = useRouter();
 
-  // Check session on every app load
+  // Load session ONCE
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then(res => (res.ok ? res.json() : null))
       .then(data => setUser(data))
-      .finally(() => setLoading(false));
+      .catch(() => setUser(null));
   }, []);
 
-  // ---------- ROUTE GUARDS ----------
-  useEffect(() => {
-    if (loading) return;
+  // ⛔ DO NOT redirect until user is resolved
+  if (user === undefined) {
+    return <div className="p-6">Loading…</div>;
+  }
 
-    // 🚫 Block /login if already logged in
-    if (user && router.pathname === "/login") {
-      redirectByRole(user.role, router);
-    }
+  // ---------- ROUTE RULES ----------
 
-    // 🚫 Block protected pages if not logged in
-    if (!user && router.pathname !== "/login") {
+  // Not logged in → only login allowed
+  if (!user && router.pathname !== "/login") {
+    if (typeof window !== "undefined") {
       router.replace("/login");
     }
-  }, [user, loading, router.pathname]);
+    return null;
+  }
 
-  if (loading) {
-    return <div className="p-6">Loading…</div>;
+  // Logged in → block login page
+  if (user && router.pathname === "/login") {
+    redirectByRole(user.role, router);
+    return null;
   }
 
   return (
@@ -46,7 +48,7 @@ function redirectByRole(role, router) {
   if (role === "buyer") {
     router.replace("/orders");
   } else {
-    router.replace("/ops/orders"); // ops + finance
+    router.replace("/dashboard"); // admin / ops / finance
   }
 }
 
@@ -59,7 +61,6 @@ function Navbar({ user, setUser }) {
       method: "POST",
       credentials: "include",
     });
-
     setUser(null);
     router.replace("/login");
   }
@@ -69,18 +70,11 @@ function Navbar({ user, setUser }) {
       <div className="font-semibold">Pellet Platform</div>
 
       <div className="space-x-4">
-        {!user && (
-          <button onClick={() => router.push("/login")}>
-            Login
-          </button>
-        )}
-
         {user && (
           <>
             <span className="text-sm text-gray-600">
               {user.role}
             </span>
-
             <button
               onClick={logout}
               className="px-3 py-1 bg-red-600 text-white rounded"

@@ -7,31 +7,67 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/* =========================
+   ENUMS
+========================= */
+
+enum UserRole {
+  BUYER
+  OPS
+  FINANCE
+  ADMIN
+}
+
+enum OrderStatus {
+  CREATED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum BatchStatus {
+  CREATED
+  INVOICED
+  PAID
+}
+
+/* =========================
+   CORE ENTITIES
+========================= */
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
   gst       String?
-  createdAt DateTime @default(now())
   state     String
-  orders    Order[]
-  users     User[]
+  createdAt DateTime @default(now())
+
+  users  User[]
+  orders Order[]
 }
 
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
-  role         String
-  orgId        String
+  name         String
+  role         UserRole
+  orgId        String?
+  active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  org          Organization @relation(fields: [orgId], references: [id])
+  org Organization? @relation(fields: [orgId], references: [id])
+
+  ordersCreated  Order[]  @relation("OrderCreatedBy")
+  batchesCreated OrderBatch[] @relation("BatchCreatedBy")
 }
 
+/* =========================
+   PRODUCT & FACTORY
+========================= */
 
 model Product {
-  id        String       @id @default(uuid())
-  sku       String       @unique
+  id        String   @id @default(uuid())
+  sku       String   @unique
   name      String
   type      String
   grade     String
@@ -40,41 +76,99 @@ model Product {
   ashPct    Float
   moisture  Float
   pricePMT  Float
-  active    Boolean      @default(true)
-  inventory Inventory?
-  batches   OrderBatch[]
+  active    Boolean  @default(true)
+
+  inventories Inventory[]
+  batches     OrderBatch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+model Site {
+  id     String  @id @default(uuid())
+  name   String
+  city   String
+  state  String
+  active Boolean @default(true)
+
+  inventories Inventory[]
+  batches     OrderBatch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/* =========================
+   INVENTORY (ERP-LIKE)
+========================= */
 
 model Inventory {
-  id          String   @id @default(uuid())
-  productId   String   @unique
+  id        String   @id @default(uuid())
+  productId String
+  siteId    String
   availableMT Float
-  reservedMT  Float    @default(0)
-  updatedAt   DateTime @updatedAt
-  product     Product  @relation(fields: [productId], references: [id])
+  updatedAt DateTime @updatedAt
+  updatedBy String
+
+  product Product @relation(fields: [productId], references: [id])
+  site    Site    @relation(fields: [siteId], references: [id])
+  updater User    @relation(fields: [updatedBy], references: [id])
+
+  @@unique([productId, siteId])
 }
 
+model InventoryHistory {
+  id        String   @id @default(uuid())
+  productId String
+  siteId    String
+  quantity  Float
+  recordedAt DateTime @default(now())
+  recordedBy String
+
+  product Product @relation(fields: [productId], references: [id])
+  site    Site    @relation(fields: [siteId], references: [id])
+  recorder User    @relation(fields: [recordedBy], references: [id])
+}
+
+/* =========================
+   ORDER & EXECUTION
+========================= */
+
 model Order {
-  id        String       @id @default(uuid())
-  orgId     String
-  type      String
-  status    String
-  createdAt DateTime     @default(now())
-  org       Organization @relation(fields: [orgId], references: [id])
-  batches   OrderBatch[]
+  id          String      @id @default(uuid())
+  orgId       String
+  status      OrderStatus @default(CREATED)
+  createdAt   DateTime    @default(now())
+  createdBy   String
+
+  org     Organization @relation(fields: [orgId], references: [id])
+  creator User         @relation("OrderCreatedBy", fields: [createdBy], references: [id])
+  batches OrderBatch[]
 }
 
 model OrderBatch {
-  id         String    @id @default(uuid())
+  id         String      @id @default(uuid())
   orderId    String
   productId  String
+  siteId     String
   quantityMT Float
-  deliveryAt DateTime?
-  createdAt  DateTime  @default(now())
-  invoice    Invoice?
-  order      Order     @relation(fields: [orderId], references: [id])
-  product    Product   @relation(fields: [productId], references: [id])
+  status     BatchStatus @default(CREATED)
+  createdAt  DateTime    @default(now())
+  createdBy  String
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  site    Site    @relation(fields: [siteId], references: [id])
+  creator User    @relation("BatchCreatedBy", fields: [createdBy], references: [id])
+
+  invoice Invoice?
+  payment Payment?
 }
+
+/* =========================
+   FINANCE
+========================= */
 
 model Invoice {
   id          String   @id @default(uuid())
@@ -89,10 +183,9 @@ model Invoice {
   erpStatus   String   @default("PENDING")
   createdAt   DateTime @default(now())
 
-  batch       OrderBatch @relation(fields: [batchId], references: [id])
-  payments    Payment[]
+  batch    OrderBatch @relation(fields: [batchId], references: [id])
+  payments Payment[]
 }
-
 
 model Payment {
   id        String   @id @default(uuid())
@@ -102,8 +195,13 @@ model Payment {
   proofUrl  String?
   verified  Boolean  @default(false)
   createdAt DateTime @default(now())
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
 }
+
+/* =========================
+   AUDIT (GENERIC)
+========================= */
 
 model AuditLog {
   id        String   @id @default(uuid())

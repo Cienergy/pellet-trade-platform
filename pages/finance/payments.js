@@ -47,18 +47,20 @@ export default function FinancePayments() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-semibold">Review Payments</h1>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              Review Payments
+            </h1>
             <p className="text-gray-600 mt-1">
               Approve or reject payment proofs
             </p>
           </div>
           <Link
             href="/finance/dashboard"
-            className="px-4 py-2 border rounded hover:bg-gray-50"
+            className="px-4 py-2 border rounded hover:bg-gray-50 transition"
           >
             ← Back to Dashboard
           </Link>
@@ -73,7 +75,7 @@ export default function FinancePayments() {
             {payments.map((payment) => (
               <div
                 key={payment.id}
-                className="bg-white rounded-xl border p-6 space-y-4"
+                className="bg-white rounded-xl border p-6 space-y-4 shadow-sm hover:shadow-md transition"
               >
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
@@ -117,13 +119,13 @@ export default function FinancePayments() {
                 <div className="flex gap-3 pt-4 border-t">
                   <button
                     onClick={() => verifyPayment(payment.id, true)}
-                    className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded hover:from-green-700 hover:to-emerald-700 transition"
                   >
                     Approve
                   </button>
                   <button
                     onClick={() => verifyPayment(payment.id, false)}
-                    className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    className="px-6 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded hover:from-red-700 hover:to-rose-700 transition"
                   >
                     Reject
                   </button>

@@ -18,41 +18,57 @@ export default function CreateOrder() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/buyer/catalog", { credentials: "include" }).then((r) =>
-        r.json()
-      ),
+      fetch("/api/buyer/catalog", { credentials: "include" })
+        .then((r) => r.json())
+        .catch(() => []),
       fetch("/api/admin/sites", { credentials: "include" })
         .then((r) => r.json())
         .catch(() => []),
     ]).then(([prods, sts]) => {
-      if (prods) setProducts(prods);
-      if (sts) setSites(sts);
+      // Ensure only arrays are set in state
+      if (Array.isArray(prods)) setProducts(prods);
+      if (Array.isArray(sts)) setSites(sts);
     });
   }, []);
+
+  // Update productId when query parameter changes
+  useEffect(() => {
+    if (productId) {
+      setForm((prev) => ({ ...prev, productId }));
+    }
+  }, [productId]);
 
   async function submitOrder(e) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
 
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
 
-    if (res.ok) {
-      const order = await res.json();
-      router.push(`/buyer/orders?created=${order.id}`);
-    } else {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to create order");
+      if (res.ok) {
+        const order = await res.json();
+        router.push(`/buyer/orders?created=${order.id}`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error || "Failed to create order");
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      setError("Failed to create order. Please try again.");
+    } finally {
       setSubmitting(false);
     }
   }
 
-  const selectedProduct = products.find((p) => p.id === form.productId);
+  const selectedProduct = Array.isArray(products) 
+    ? products.find((p) => p.id === form.productId) 
+    : null;
 
   return (
     <BuyerLayout>
@@ -87,7 +103,7 @@ export default function CreateOrder() {
               required
             >
               <option value="">Select Product</option>
-              {products.map((p) => (
+              {Array.isArray(products) && products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} - ₹{p.pricePMT}/MT
                   {p.availableMT > 0
@@ -114,7 +130,7 @@ export default function CreateOrder() {
               required
             >
               <option value="">Select Site</option>
-              {sites.map((s) => (
+              {Array.isArray(sites) && sites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} - {s.city}, {s.state}
                 </option>
@@ -151,7 +167,7 @@ export default function CreateOrder() {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
+              className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 transition"
             >
               {submitting ? "Creating Order..." : "Create Order"}
             </button>
@@ -167,4 +183,3 @@ export default function CreateOrder() {
     </BuyerLayout>
   );
 }
-

@@ -51,7 +51,7 @@ async function handler(req, res) {
     ].join(","),
     ...invoices.map((inv) => {
       const payments = inv.payments
-        .map((p) => `₹${p.amount} (${p.mode})`)
+        .map((p) => `INR ${p.amount.toLocaleString('en-IN')} (${p.mode})`)
         .join("; ");
       return [
         inv.number,
@@ -59,10 +59,10 @@ async function handler(req, res) {
         inv.batch.order.org.name,
         inv.batch.product.name,
         inv.batch.quantityMT,
-        inv.subtotal,
-        inv.gstRate,
-        inv.gstAmount,
-        inv.totalAmount,
+        `INR ${inv.subtotal.toLocaleString('en-IN')}`,
+        `${inv.gstRate}%`,
+        `INR ${inv.gstAmount.toLocaleString('en-IN')}`,
+        `INR ${inv.totalAmount.toLocaleString('en-IN')}`,
         inv.status,
         payments || "None",
       ].join(",");

@@ -92,7 +92,7 @@ export default function AdminUsers() {
 
         <button
           onClick={createUser}
-          className="col-span-5 bg-black text-white py-2 rounded"
+          className="col-span-5 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded hover:from-green-700 hover:to-emerald-700 transition"
         >
           Create User
         </button>

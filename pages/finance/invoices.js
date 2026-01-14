@@ -56,11 +56,13 @@ export default function FinanceInvoices() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-semibold">Invoice Management</h1>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              Invoice Management
+            </h1>
             <p className="text-gray-600 mt-1">
               View, filter, and download invoices
             </p>
@@ -68,13 +70,13 @@ export default function FinanceInvoices() {
           <div className="flex gap-3">
             <button
               onClick={downloadCSV}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded hover:from-blue-700 hover:to-indigo-700 transition"
             >
               Download CSV
             </button>
             <Link
               href="/finance/dashboard"
-              className="px-4 py-2 border rounded hover:bg-gray-50"
+              className="px-4 py-2 border rounded hover:bg-gray-50 transition"
             >
               ← Back
             </Link>
@@ -130,7 +132,7 @@ export default function FinanceInvoices() {
             <div className="flex items-end">
               <button
                 onClick={() => setFilters({ status: "", startDate: "", endDate: "" })}
-                className="w-full px-4 py-2 border rounded hover:bg-gray-50"
+                className="w-full px-4 py-2 border rounded hover:bg-gray-50 transition"
               >
                 Clear Filters
               </button>
@@ -148,7 +150,7 @@ export default function FinanceInvoices() {
             {invoices.map((invoice) => (
               <div
                 key={invoice.id}
-                className="bg-white rounded-xl border p-6 space-y-4"
+                className="bg-white rounded-xl border p-6 space-y-4 shadow-sm hover:shadow-md transition"
               >
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>

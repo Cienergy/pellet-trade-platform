@@ -169,7 +169,7 @@ export default function AdminProducts() {
             <button
               type="submit"
               disabled={submitting}
-              className="col-span-2 md:col-span-4 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
+              className="col-span-2 md:col-span-4 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 transition"
             >
               {submitting ? "Creating..." : "Create Product"}
             </button>

@@ -17,9 +17,9 @@ export default function OpsInventory() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/ops/inventory", { credentials: "include" }).then((r) =>
-        r.json()
-      ),
+      fetch("/api/ops/inventory", { credentials: "include" })
+        .then((r) => r.json())
+        .catch(() => []),
       fetch("/api/admin/products", { credentials: "include" })
         .then((r) => r.json())
         .catch(() => []),
@@ -27,9 +27,10 @@ export default function OpsInventory() {
         .then((r) => r.json())
         .catch(() => []),
     ]).then(([inv, prods, sts]) => {
-      if (inv) setInventory(inv);
-      if (prods) setProducts(prods);
-      if (sts) setSites(sts);
+      // Ensure all values are arrays
+      if (Array.isArray(inv)) setInventory(inv);
+      if (Array.isArray(prods)) setProducts(prods);
+      if (Array.isArray(sts)) setSites(sts);
       setLoading(false);
     });
   }, []);
@@ -38,33 +39,39 @@ export default function OpsInventory() {
     e.preventDefault();
     setSubmitting(true);
 
-    const res = await fetch("/api/ops/inventory", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    if (res.ok) {
-      const updated = await res.json();
-      setInventory((inv) => {
-        const index = inv.findIndex(
-          (i) =>
-            i.productId === updated.productId && i.siteId === updated.siteId
-        );
-        if (index >= 0) {
-          inv[index] = updated;
-          return [...inv];
-        }
-        return [...inv, updated];
+    try {
+      const res = await fetch("/api/ops/inventory", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
-      setForm({ productId: "", siteId: "", availableMT: "" });
-      alert("Inventory updated successfully");
-    } else {
-      alert("Failed to update inventory");
-    }
 
-    setSubmitting(false);
+      if (res.ok) {
+        const updated = await res.json();
+        setInventory((inv) => {
+          const index = inv.findIndex(
+            (i) =>
+              i.productId === updated.productId && i.siteId === updated.siteId
+          );
+          if (index >= 0) {
+            inv[index] = updated;
+            return [...inv];
+          }
+          return [...inv, updated];
+        });
+        setForm({ productId: "", siteId: "", availableMT: "" });
+        alert("Inventory updated successfully");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to update inventory");
+      }
+    } catch (error) {
+      console.error("Error updating inventory:", error);
+      alert("Failed to update inventory");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (loading) {
@@ -106,7 +113,7 @@ export default function OpsInventory() {
               required
             >
               <option value="">Select Product</option>
-              {products.map((p) => (
+              {Array.isArray(products) && products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -120,7 +127,7 @@ export default function OpsInventory() {
               required
             >
               <option value="">Select Site</option>
-              {sites.map((s) => (
+              {Array.isArray(sites) && sites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
@@ -142,7 +149,7 @@ export default function OpsInventory() {
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
+              className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 transition"
             >
               {submitting ? "Updating..." : "Update"}
             </button>
@@ -163,7 +170,7 @@ export default function OpsInventory() {
                 </tr>
               </thead>
               <tbody>
-                {inventory.map((inv) => (
+                {Array.isArray(inventory) && inventory.map((inv) => (
                   <tr key={inv.id} className="border-t">
                     <td className="p-3">{inv.product?.name || "-"}</td>
                     <td className="p-3">{inv.site?.name || "-"}</td>
@@ -175,7 +182,7 @@ export default function OpsInventory() {
                     </td>
                   </tr>
                 ))}
-                {inventory.length === 0 && (
+                {(!Array.isArray(inventory) || inventory.length === 0) && (
                   <tr>
                     <td colSpan="4" className="p-8 text-center text-gray-500">
                       No inventory records found
@@ -190,4 +197,3 @@ export default function OpsInventory() {
     </div>
   );
 }
-

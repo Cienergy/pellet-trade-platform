@@ -1,58 +1,85 @@
-import { prisma } from "../../../lib/prisma";
 import requireAuth from "../../../lib/requireAuth";
+import prisma from "../../../lib/prisma";
+import { logAudit } from "../../../lib/audit";
 
 async function handler(req, res) {
-  const { role, orgId, userId } = req.user;
+  const session = req.session;
 
-  // ---------- GET ORDERS ----------
-  if (req.method === "GET") {
-    const where =
-      role === "admin" || role === "finance" || role === "ops"
-        ? {}
-        : { orgId };
+  if (req.method === "POST") {
+    if (session.role !== "BUYER") {
+      return res.status(403).json({ error: "Only buyers can create orders" });
+    }
 
-    const orders = await prisma.order.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
+    const { productId, siteId, quantityMT } = req.body;
+
+    if (!productId || !siteId || !quantityMT) {
+      return res.status(400).json({
+        error: "productId, siteId, and quantityMT are required",
+      });
+    }
+
+    // Create order
+    const order = await prisma.order.create({
+      data: {
+        orgId: session.orgId,
+        createdBy: session.userId,
+        status: "CREATED",
+        batches: {
+          create: {
+            productId,
+            siteId,
+            quantityMT: Number(quantityMT),
+            status: "CREATED",
+            createdBy: session.userId,
+          },
+        },
+      },
       include: {
         batches: {
           include: {
             product: true,
-            invoice: {
-              include: {
-                payments: true,
-              },
-            },
+            site: true,
           },
         },
       },
     });
 
-    // 🔒 ALWAYS return a stable shape
-    return res.status(200).json({ orders });
-  }
-
-  // ---------- CREATE ORDER (BUYER ONLY) ----------
-  if (req.method === "POST") {
-    if (role !== "buyer") {
-      return res.status(403).json({ error: "Only buyers can create orders" });
-    }
-
-    const { type } = req.body;
-    if (!type) {
-      return res.status(400).json({ error: "Order type required" });
-    }
-
-    const order = await prisma.order.create({
-      data: {
-        orgId,
-        buyerId: userId,
-        type,
-        status: "created",
-      },
+    await logAudit({
+      actorId: session.userId,
+      entity: "order",
+      entityId: order.id,
+      action: "created",
     });
 
-    return res.status(201).json({ order });
+    return res.status(201).json(order);
+  }
+
+  if (req.method === "GET") {
+    const where =
+      session.role === "BUYER"
+        ? { orgId: session.orgId }
+        : session.role === "OPS"
+        ? {}
+        : {};
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        batches: {
+          include: {
+            product: true,
+            site: true,
+            invoice: {
+              include: { payments: true },
+            },
+          },
+        },
+        org: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.status(200).json(orders);
   }
 
   return res.status(405).end();

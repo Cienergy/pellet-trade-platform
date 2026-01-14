@@ -40,7 +40,7 @@ export default function InvoiceBlock({ invoice, payments = [], user }) {
               </div>
 
               {!payment.verified &&
-                (user.role === "finance" || user.role === "admin") && (
+                (user.role === "FINANCE" || user.role === "ADMIN") && (
                   <button
                     disabled={verifying}
                     onClick={async () => {

@@ -7,9 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/* =========================
-   ENUMS
-========================= */
+/**
+ * =========================
+ * ENUMS
+ * =========================
+ */
 
 enum UserRole {
   BUYER
@@ -30,9 +32,11 @@ enum BatchStatus {
   PAID
 }
 
-/* =========================
-   CORE
-========================= */
+/**
+ * =========================
+ * CORE
+ * =========================
+ */
 
 model Organization {
   id        String   @id @default(uuid())
@@ -57,28 +61,31 @@ model User {
 
   org Organization? @relation(fields: [orgId], references: [id])
 
-  ordersCreated     Order[]            @relation("OrderCreatedBy")
-  batchesCreated    OrderBatch[]       @relation("BatchCreatedBy")
-  inventoryUpdates  Inventory[]        @relation("InventoryUpdatedBy")
-  inventoryLogs     InventoryHistory[] @relation("InventoryRecordedBy")
+  ordersCreated    Order[]            @relation("OrderCreatedBy")
+  batchesCreated   OrderBatch[]       @relation("BatchCreatedBy")
+  inventoryUpdates Inventory[]        @relation("InventoryUpdatedBy")
+  inventoryLogs    InventoryHistory[] @relation("InventoryRecordedBy")
+  sessions         Session[]
 }
 
-/* =========================
-   PRODUCT & SITE
-========================= */
+/**
+ * =========================
+ * PRODUCT & SITE
+ * =========================
+ */
 
 model Product {
-  id        String   @id @default(uuid())
-  sku       String   @unique
-  name      String
-  type      String
-  grade     String
-  cvMin     Int
-  cvMax     Int
-  ashPct    Float
-  moisture  Float
-  pricePMT  Float
-  active    Boolean  @default(true)
+  id       String  @id @default(uuid())
+  sku      String  @unique
+  name     String
+  type     String
+  grade    String
+  cvMin    Int
+  cvMax    Int
+  ashPct   Float
+  moisture Float
+  pricePMT Float
+  active   Boolean @default(true)
 
   inventories      Inventory[]
   inventoryHistory InventoryHistory[]
@@ -103,9 +110,11 @@ model Site {
   updatedAt DateTime @updatedAt
 }
 
-/* =========================
-   INVENTORY (LOCKED)
-========================= */
+/**
+ * =========================
+ * INVENTORY (LOCKED)
+ * =========================
+ */
 
 model Inventory {
   id          String   @id @default(uuid())
@@ -135,9 +144,11 @@ model InventoryHistory {
   recorder User    @relation("InventoryRecordedBy", fields: [recordedBy], references: [id])
 }
 
-/* =========================
-   ORDER & EXECUTION
-========================= */
+/**
+ * =========================
+ * ORDER & EXECUTION
+ * =========================
+ */
 
 model Order {
   id        String      @id @default(uuid())
@@ -169,9 +180,11 @@ model OrderBatch {
   invoice Invoice?
 }
 
-/* =========================
-   FINANCE
-========================= */
+/**
+ * =========================
+ * FINANCE
+ * =========================
+ */
 
 model Invoice {
   id          String   @id @default(uuid())
@@ -202,9 +215,11 @@ model Payment {
   invoice Invoice @relation(fields: [invoiceId], references: [id])
 }
 
-/* =========================
-   AUDIT
-========================= */
+/**
+ * =========================
+ * AUDIT
+ * =========================
+ */
 
 model AuditLog {
   id        String   @id @default(uuid())
@@ -214,3 +229,14 @@ model AuditLog {
   actorId   String?
   createdAt DateTime @default(now())
 }
+
+model Session {
+  token     String   @id
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+

@@ -1,39 +1,38 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { roleRedirect } from "../lib/roleRedirect";
 
 export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    async function routeUser() {
-      const res = await fetch("/api/auth/me");
-      if (!res.ok) {
-        router.replace("/login");
-        return;
-      }
+    async function redirect() {
+      try {
+        const res = await fetch("/api/auth/me", {
+          credentials: "same-origin",
+        });
 
-      const user = await res.json();
-
-      switch (user.role) {
-        case "admin":
-          router.replace("/admin/users");
-          break;
-        case "ops":
-          router.replace("/ops/orders");
-          break;
-        case "finance":
-          router.replace("/finance/invoices");
-          break;
-        case "buyer":
-          router.replace("/orders");
-          break;
-        default:
+        if (!res.ok) {
           router.replace("/login");
+          return;
+        }
+
+        const user = await res.json();
+        const redirectPath = roleRedirect(user.role);
+        router.replace(redirectPath);
+      } catch (err) {
+        console.error("Dashboard redirect error:", err);
+        router.replace("/login");
       }
     }
 
-    routeUser();
+    redirect();
   }, [router]);
 
-  return null; // no UI, instant redirect
+  return (
+    <div className="p-6">
+      <div>Redirecting...</div>
+    </div>
+  );
 }
+

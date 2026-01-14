@@ -1,11 +1,12 @@
-import { getSession } from "../../../lib/session";
+import requireAuth from "../../../lib/requireAuth";
 
-export default async function handler(req, res) {
-  const session = getSession(req);
+export default requireAuth(async function handler(req, res) {
+  const { user } = req.session;
 
-  if (!session) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-
-  return res.status(200).json(session);
-}
+  res.status(200).json({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    orgId: user.orgId,
+  });
+});

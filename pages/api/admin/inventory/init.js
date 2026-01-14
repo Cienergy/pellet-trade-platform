@@ -1,40 +1,51 @@
-import { prisma } from "../../../../lib/prisma";
+import prisma from "../../../../lib/prisma";
+import requireAuth from "../../../../lib/requireAuth";
+import requireRole from "../../../../lib/requireRole";
 
-export default requireAuth(
-    requireRole(["admin", "ops"])(async function handler(req, res) {
-  // TODO: admin auth
-  const isAdmin = true;
-  if (!isAdmin) {
-    return res.status(403).json({ error: "Admin only" });
-  }
-
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { productId, availableMT } = req.body;
+  const { productId, siteId, availableMT } = req.body;
+  const session = req.session;
 
-  if (!productId || availableMT == null) {
-    return res.status(400).json({ error: "Missing fields" });
+  if (!productId || !siteId || availableMT == null) {
+    return res.status(400).json({ error: "Missing required fields" });
   }
 
   const inventory = await prisma.inventory.upsert({
-    where: { productId },
-    update: { availableMT },
+    where: {
+      productId_siteId: {
+        productId,
+        siteId,
+      },
+    },
+    update: { 
+      availableMT,
+      updatedBy: session.userId,
+    },
     create: {
       productId,
+      siteId,
       availableMT,
-      reservedMT: 0
-    }
+      updatedBy: session.userId,
+    },
   });
 
   await prisma.auditLog.create({
     data: {
       entity: "Inventory",
       entityId: inventory.id,
-      action: "INITIALIZED"
-    }
+      action: "INITIALIZED",
+      actorId: session.userId,
+    },
   });
 
   res.status(200).json(inventory);
-}))
+}
+
+export default requireAuth(
+  requireRole(["ADMIN", "OPS"], handler)
+);
+

@@ -1,6 +1,6 @@
-import { prisma } from "../../../lib/prisma";
-import { requireAuth } from "../../../lib/requireAuth";
-import { requireRole } from "../../../lib/requireRole";
+import prisma from "../../../lib/prisma";
+import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -14,5 +14,5 @@ async function handler(req, res) {
 }
 
 export default requireAuth(
-  requireRole(["finance"], handler)
+  requireRole("FINANCE", handler)
 );

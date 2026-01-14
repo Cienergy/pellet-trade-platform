@@ -1,22 +1,38 @@
-import requireAuth from "../../lib/requireAuth";
 import { prisma } from "../../lib/prisma";
+import requireAuth from "../../lib/requireAuth";
 
 async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).end();
-  if (req.session.role !== "BUYER")
-    return res.status(403).json({ error: "Forbidden" });
-
   const products = await prisma.product.findMany({
     where: { active: true },
     include: {
       inventory: {
-        include: { site: true },
+        include: {
+          site: true,
+        },
       },
     },
-    orderBy: { name: "asc" },
   });
 
-  res.status(200).json(products);
+  const result = products.map((p) => {
+    const sites = p.inventory
+      .filter((i) => i.availableMT > 0)
+      .map((i) => ({
+        siteId: i.siteId,
+        siteName: i.site.name,
+        availableMT: i.availableMT,
+      }));
+
+    return {
+      id: p.id,
+      name: p.name,
+      grade: p.grade,
+      pricePMT: p.pricePMT,
+      available: sites.length > 0,
+      sites,
+    };
+  });
+
+  res.status(200).json(result);
 }
 
 export default requireAuth(handler);

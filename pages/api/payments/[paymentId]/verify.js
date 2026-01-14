@@ -1,21 +1,18 @@
-const { prisma } = require("../../../../lib/prisma");
+import prisma from "../../../../lib/prisma";
+import requireAuth from "../../../../lib/requireAuth";
+import requireRole from "../../../../lib/requireRole";
 
-export default requireAuth(
-  requireRole(["admin", "finance"])(async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  // TEMP: replace with real auth later
-  const userRole = req.headers["x-user-role"];
-
-  if (userRole !== "finance" && userRole !== "admin") {
-    return res.status(403).json({ error: "Not authorized" });
-  }
-
   const { paymentId } = req.query;
+  const session = req.session;
+
+  const { approve } = req.body;
 
   const payment = await prisma.payment.update({
     where: { id: paymentId },
-    data: { verified: true },
+    data: { verified: approve !== false },
   });
 
   await prisma.auditLog.create({
@@ -23,8 +20,13 @@ export default requireAuth(
       entity: "payment",
       entityId: payment.id,
       action: "verified",
+      actorId: session.userId,
     },
   });
 
   return res.json(payment);
-}))
+}
+
+export default requireAuth(
+  requireRole(["ADMIN", "FINANCE"], handler)
+);

@@ -1,20 +1,20 @@
-import { prisma } from "../../../lib/prisma";
-import { requireAuth } from "../../../lib/requireAuth";
-import { requireRole } from "../../../lib/requireRole";
+import prisma from "../../../lib/prisma";
+import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
 
 async function handler(req, res) {
-  const user = req.user;
+  const session = req.session;
 
   if (req.method !== "GET") {
     return res.status(405).end();
   }
 
   const where =
-    user.role === "buyer"
+    session.role === "BUYER"
       ? {
           batch: {
             order: {
-              orgId: user.orgId,
+              orgId: session.orgId,
             },
           },
         }
@@ -38,5 +38,5 @@ async function handler(req, res) {
 }
 
 export default requireAuth(
-  requireRole(["admin", "finance", "buyer"])(handler)
+  requireRole(["ADMIN", "FINANCE", "BUYER"], handler)
 );

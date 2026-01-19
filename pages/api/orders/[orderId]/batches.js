@@ -1,7 +1,7 @@
-import prisma from "../../../lib/prisma";
-import requireAuth from "../../../lib/requireAuth";
-import requireRole from "../../../lib/requireRole";
-import { logAudit } from "../../../lib/audit";
+import prisma from "../../../../lib/prisma";
+import requireAuth from "../../../../lib/requireAuth";
+import requireRole from "../../../../lib/requireRole";
+import { logAudit } from "../../../../lib/audit";
 
 async function handler(req, res) {
   const { orderId } = req.query;
@@ -30,7 +30,7 @@ async function handler(req, res) {
 
   if (req.method === "POST") {
     try {
-      const { productId, siteId, quantityMT } = req.body;
+      const { productId, siteId, quantityMT, deliveryAt } = req.body;
 
       if (!productId || !siteId || !quantityMT) {
         return res.status(400).json({ 
@@ -47,6 +47,19 @@ async function handler(req, res) {
 
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Calculate remaining quantity
+      const requestedMT = order.requestedQuantityMT || 0;
+      const batchedMT = order.batches.reduce((sum, b) => sum + b.quantityMT, 0);
+      const remainingMT = requestedMT - batchedMT;
+      const requestedBatchQty = Number(quantityMT);
+
+      // Validate batch quantity doesn't exceed remaining
+      if (requestedBatchQty > remainingMT) {
+        return res.status(400).json({ 
+          error: `Batch quantity (${requestedBatchQty} MT) exceeds remaining order quantity (${remainingMT.toFixed(2)} MT)` 
+        });
       }
 
       // Get product for pricing
@@ -66,6 +79,7 @@ async function handler(req, res) {
           siteId,
           quantityMT: Number(quantityMT),
           status: "CREATED",
+          deliveryAt: deliveryAt ? new Date(deliveryAt) : null,
           createdBy: session.userId,
         },
         include: {

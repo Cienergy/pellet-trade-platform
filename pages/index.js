@@ -30,7 +30,7 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-green-400 via-blue-400 to-green-300 bg-clip-text text-transparent">
-              Pellet Trading Platform
+              Customer Portal
             </h1>
             
             <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">

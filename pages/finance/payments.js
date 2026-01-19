@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { showToast } from "../../components/Toast";
 
 export default function FinancePayments() {
   const router = useRouter();
@@ -33,8 +34,9 @@ export default function FinancePayments() {
 
     if (res.ok) {
       setPayments((p) => p.filter((pay) => pay.id !== paymentId));
+      showToast(approve ? "Payment approved successfully" : "Payment rejected", "success");
     } else {
-      alert("Failed to update payment");
+      showToast("Failed to update payment", "error");
     }
   }
 

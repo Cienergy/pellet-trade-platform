@@ -29,7 +29,10 @@ enum OrderStatus {
 enum BatchStatus {
   CREATED
   INVOICED
+  PAYMENT_APPROVED
+  IN_PROGRESS
   PAID
+  COMPLETED
 }
 
 /**
@@ -151,11 +154,12 @@ model InventoryHistory {
  */
 
 model Order {
-  id        String      @id @default(uuid())
-  orgId     String
-  status    OrderStatus @default(CREATED)
-  createdAt DateTime    @default(now())
-  createdBy String
+  id                 String      @id @default(uuid())
+  orgId              String
+  status             OrderStatus @default(CREATED)
+  requestedQuantityMT Float?      // Original order quantity requested by buyer
+  createdAt          DateTime    @default(now())
+  createdBy          String
 
   org     Organization @relation(fields: [orgId], references: [id])
   creator User         @relation("OrderCreatedBy", fields: [createdBy], references: [id])
@@ -169,6 +173,7 @@ model OrderBatch {
   siteId     String
   quantityMT Float
   status     BatchStatus @default(CREATED)
+  deliveryAt DateTime?
   createdAt  DateTime    @default(now())
   createdBy  String
 

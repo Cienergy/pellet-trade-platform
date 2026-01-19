@@ -18,17 +18,19 @@ async function handler(req, res) {
       });
     }
 
-    // Create order
+    // Create order with requested quantity
+    const requestedQty = Number(quantityMT);
     const order = await prisma.order.create({
       data: {
         orgId: session.orgId,
         createdBy: session.userId,
         status: "CREATED",
+        requestedQuantityMT: requestedQty, // Store original requested quantity
         batches: {
           create: {
             productId,
             siteId,
-            quantityMT: Number(quantityMT),
+            quantityMT: requestedQty,
             status: "CREATED",
             createdBy: session.userId,
           },
@@ -79,7 +81,34 @@ async function handler(req, res) {
       orderBy: { createdAt: "desc" },
     });
 
-    return res.status(200).json(orders);
+    // Enrich with amount calculations and remaining quantity
+    const enrichedOrders = orders.map((order) => {
+      const batchedMT = order.batches.reduce((sum, b) => sum + b.quantityMT, 0);
+      const requestedMT = order.requestedQuantityMT || batchedMT; // Fallback to batched if not set
+      const remainingMT = Math.max(0, requestedMT - batchedMT);
+      
+      const totalAmount = order.batches.reduce((sum, b) => sum + (b.invoice?.totalAmount || 0), 0);
+      const paidAmount = order.batches.reduce((sum, b) => {
+        if (!b.invoice?.payments) return sum;
+        return sum + b.invoice.payments
+          .filter(p => p.verified)
+          .reduce((pSum, p) => pSum + p.amount, 0);
+      }, 0);
+      const pendingAmount = totalAmount - paidAmount;
+
+      return {
+        ...order,
+        requestedQuantityMT: requestedMT,
+        batchedMT,
+        remainingMT,
+        totalMT: batchedMT, // Keep for backward compatibility
+        totalAmount,
+        paidAmount,
+        pendingAmount,
+      };
+    });
+
+    return res.status(200).json(enrichedOrders);
   }
 
   return res.status(405).end();

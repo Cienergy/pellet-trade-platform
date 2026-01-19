@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { showToast } from "../../components/Toast";
 
 export default function AdminProducts() {
   const router = useRouter();
@@ -64,10 +65,10 @@ export default function AdminProducts() {
         moisture: "",
         pricePMT: "",
       });
-      alert("Product created successfully");
+      showToast("Product created successfully", "success");
     } else {
       const err = await res.json().catch(() => ({}));
-      alert(err.error || "Failed to create product");
+      showToast(err.error || "Failed to create product", "error");
     }
 
     setSubmitting(false);

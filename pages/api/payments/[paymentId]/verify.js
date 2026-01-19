@@ -10,21 +10,45 @@ async function handler(req, res) {
 
   const { approve } = req.body;
 
-  const payment = await prisma.payment.update({
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      invoice: {
+        include: {
+          batch: true,
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    return res.status(404).json({ error: "Payment not found" });
+  }
+
+  // Update payment verification status
+  const updatedPayment = await prisma.payment.update({
     where: { id: paymentId },
     data: { verified: approve !== false },
   });
+
+  // If payment is approved, update batch status to PAYMENT_APPROVED
+  if (approve !== false && payment.invoice?.batch) {
+    await prisma.orderBatch.update({
+      where: { id: payment.invoice.batch.id },
+      data: { status: "PAYMENT_APPROVED" },
+    });
+  }
 
   await prisma.auditLog.create({
     data: {
       entity: "payment",
       entityId: payment.id,
-      action: "verified",
+      action: approve !== false ? "verified" : "rejected",
       actorId: session.userId,
     },
   });
 
-  return res.json(payment);
+  return res.json(updatedPayment);
 }
 
 export default requireAuth(

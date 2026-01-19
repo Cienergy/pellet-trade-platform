@@ -33,19 +33,16 @@ async function handler(req, res) {
   /**
    * Normalize DB → UI shape
    */
-  const response = orders.map((order) => ({
-    id: order.id,
-    createdAt: order.createdAt,
-    status: order.status,
-    totalMT: order.batches.reduce(
-      (sum, b) => sum + b.quantityMT,
-      0
-    ),
+  const response = orders.map((order) => {
+    const batchedMT = order.batches.reduce((sum, b) => sum + b.quantityMT, 0);
+    const requestedMT = order.requestedQuantityMT || batchedMT; // Fallback if not set
+    const remainingMT = Math.max(0, requestedMT - batchedMT);
 
-    batches: order.batches.map((b) => ({
+    const batches = order.batches.map((b) => ({
       id: b.id,
       product: {
         name: b.product.name,
+        pricePMT: b.product.pricePMT,
       },
       site: b.site?.name || "—",
       quantityMT: b.quantityMT,
@@ -68,8 +65,33 @@ async function handler(req, res) {
             })),
           }
         : null,
-    })),
-  }));
+    }));
+
+    // Calculate amounts
+    const totalMT = batches.reduce((sum, b) => sum + b.quantityMT, 0);
+    const totalAmount = batches.reduce((sum, b) => sum + (b.invoice?.total || 0), 0);
+    const paidAmount = batches.reduce((sum, b) => {
+      if (!b.invoice?.payments) return sum;
+      return sum + b.invoice.payments
+        .filter(p => p.verified)
+        .reduce((pSum, p) => pSum + p.amount, 0);
+    }, 0);
+    const pendingAmount = totalAmount - paidAmount;
+
+    return {
+      id: order.id,
+      createdAt: order.createdAt,
+      status: order.status,
+      requestedQuantityMT: requestedMT,
+      batchedMT,
+      remainingMT,
+      totalMT: batchedMT, // Keep for backward compatibility
+      totalAmount,
+      paidAmount,
+      pendingAmount,
+      batches,
+    };
+  });
 
   return res.status(200).json(response);
 }

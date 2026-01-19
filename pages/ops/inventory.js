@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { showToast } from "../../components/Toast";
 
 export default function OpsInventory() {
   const router = useRouter();
@@ -61,14 +62,14 @@ export default function OpsInventory() {
           return [...inv, updated];
         });
         setForm({ productId: "", siteId: "", availableMT: "" });
-        alert("Inventory updated successfully");
+        showToast("Inventory updated successfully", "success");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to update inventory");
+        showToast(error.error || "Failed to update inventory", "error");
       }
     } catch (error) {
       console.error("Error updating inventory:", error);
-      alert("Failed to update inventory");
+      showToast("Failed to update inventory", "error");
     } finally {
       setSubmitting(false);
     }

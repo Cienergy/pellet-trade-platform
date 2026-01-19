@@ -9,10 +9,10 @@ async function handler(req, res) {
 
   if (req.method === "PATCH") {
     try {
-      // Update batch status to PAID (completed)
+      // Update batch status to COMPLETED
       const batch = await prisma.orderBatch.update({
         where: { id: batchId },
-        data: { status: "PAID" },
+        data: { status: "COMPLETED" },
         include: {
           order: {
             include: {
@@ -24,7 +24,7 @@ async function handler(req, res) {
 
       // Check if all batches are completed
       const allBatchesCompleted = batch.order.batches.every(
-        (b) => b.status === "PAID"
+        (b) => b.status === "COMPLETED"
       );
 
       // If all batches are completed, mark order as completed

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { showToast } from "../../components/Toast";
 
 export default function AdminSites() {
   const router = useRouter();
@@ -48,10 +49,10 @@ export default function AdminSites() {
       const newSite = await res.json();
       setSites([...sites, newSite]);
       setForm({ name: "", city: "", state: "" });
-      alert("Site created successfully");
+      showToast("Site created successfully", "success");
     } else {
       const err = await res.json().catch(() => ({}));
-      alert(err.error || "Failed to create site");
+      showToast(err.error || "Failed to create site", "error");
     }
 
     setSubmitting(false);

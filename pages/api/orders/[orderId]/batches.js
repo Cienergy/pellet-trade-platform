@@ -49,16 +49,36 @@ async function handler(req, res) {
         return res.status(404).json({ error: "Order not found" });
       }
 
+      // Only allow batch creation for ACCEPTED orders
+      if (order.status !== "ACCEPTED") {
+        return res.status(400).json({ 
+          error: `Cannot create batches for order with status: ${order.status}. Order must be ACCEPTED first.` 
+        });
+      }
+
       // Calculate remaining quantity
-      const requestedMT = order.requestedQuantityMT || 0;
+      const requestedMT = order.requestedQuantityMT;
+      if (!requestedMT || requestedMT <= 0) {
+        return res.status(400).json({ 
+          error: "Order does not have a valid requested quantity. Please contact support." 
+        });
+      }
+      
       const batchedMT = order.batches.reduce((sum, b) => sum + b.quantityMT, 0);
-      const remainingMT = requestedMT - batchedMT;
+      const remainingMT = Math.max(0, requestedMT - batchedMT);
       const requestedBatchQty = Number(quantityMT);
+
+      // Validate batch quantity
+      if (requestedBatchQty <= 0) {
+        return res.status(400).json({ 
+          error: "Batch quantity must be greater than 0" 
+        });
+      }
 
       // Validate batch quantity doesn't exceed remaining
       if (requestedBatchQty > remainingMT) {
         return res.status(400).json({ 
-          error: `Batch quantity (${requestedBatchQty} MT) exceeds remaining order quantity (${remainingMT.toFixed(2)} MT)` 
+          error: `Batch quantity (${requestedBatchQty} MT) exceeds remaining order quantity (${remainingMT.toFixed(2)} MT). Order requested: ${requestedMT.toFixed(2)} MT, Already batched: ${batchedMT.toFixed(2)} MT` 
         });
       }
 

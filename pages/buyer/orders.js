@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import BuyerLayout from "../../components/BuyerLayout";
 import OrderCard from "../../components/OrderCard";
+import Image from "next/image";
 
 export default function BuyerOrders() {
   const router = useRouter();
@@ -50,28 +51,47 @@ export default function BuyerOrders() {
   return (
     <BuyerLayout title="My Orders">
       <div className="space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="relative">
+            <Image
+              src="/portal-hero.svg"
+              alt="Cienergy portal"
+              width={1200}
+              height={400}
+              className="w-full h-[140px] object-cover"
+              priority
+            />
+            <div className="absolute inset-0 flex items-center">
+              <div className="px-6">
+                <div className="text-sm text-slate-600">Track your orders and batch progress</div>
+                <div className="text-xl font-semibold text-slate-900 mt-1">Orders</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white/80 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-1">Total Orders</div>
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
           </div>
-          <div className="bg-white/80 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-1">Active Orders</div>
             <div className="text-2xl font-bold text-blue-600">{stats.active}</div>
           </div>
-          <div className="bg-white/80 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-1">Completed</div>
             <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
           </div>
-          <div className="bg-white/80 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-1">Pending Batching</div>
             <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
           </div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white/80 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-4">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1">
@@ -81,7 +101,7 @@ export default function BuyerOrders() {
                   placeholder="Search by order ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
                 />
                 <svg
                   className="absolute left-3 top-2.5 w-5 h-5 text-gray-400"
@@ -102,7 +122,7 @@ export default function BuyerOrders() {
                   onClick={() => setFilter(status)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     filter === status
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md"
+                      ? "bg-[#0b69a3] text-white shadow-sm"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >

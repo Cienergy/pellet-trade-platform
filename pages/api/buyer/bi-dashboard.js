@@ -22,6 +22,25 @@ async function handler(req, res) {
       take: 10,
     });
 
+    // Top delivery locations (for BI)
+    const recentLocations = await prisma.order.findMany({
+      where: { orgId: session.orgId },
+      select: { deliveryLocation: true },
+      take: 200,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const locationCounts = recentLocations.reduce((acc, o) => {
+      const key = (o.deliveryLocation || "Unknown").trim();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const topDeliveryLocations = Object.entries(locationCounts)
+      .map(([location, count]) => ({ location, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     // Order Status Summary
     const orderStatusSummary = await prisma.order.groupBy({
       by: ["status"],
@@ -78,6 +97,7 @@ async function handler(req, res) {
         status: order.status,
         createdAt: order.createdAt,
         totalMT: order.batches.reduce((sum, b) => sum + b.quantityMT, 0),
+        deliveryLocation: order.deliveryLocation || null,
       })),
       orderStatusSummary: orderStatusSummary.map((s) => ({
         status: s.status,
@@ -85,6 +105,7 @@ async function handler(req, res) {
       })),
       totalSpent,
       favoriteProducts,
+      topDeliveryLocations,
     });
   } catch (err) {
     console.error("Buyer BI Dashboard Error:", err);

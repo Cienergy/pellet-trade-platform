@@ -5,7 +5,8 @@ export default function BatchCard({ batch, index = 0 }) {
   const invoice = batch.invoice;
   const siteName = batch.site?.name || batch.site || "Unknown";
   const productName = batch.product?.name || "Unknown Product";
-  const batchAmount = invoice?.total || (batch.quantityMT * (batch.product?.pricePMT || 0) * 1.05); // Approximate if no invoice
+  const invoiceTotal = invoice?.totalAmount ?? invoice?.total ?? null;
+  const batchAmount = invoiceTotal ?? (batch.quantityMT * (batch.product?.pricePMT || 0) * 1.05); // Approximate if no invoice
 
   const statusConfig = {
     CREATED: { color: "from-gray-400 to-gray-500", label: "Created", icon: "○" },
@@ -18,7 +19,7 @@ export default function BatchCard({ batch, index = 0 }) {
 
   const status = statusConfig[batch.status] || statusConfig.CREATED;
   const paidAmount = invoice?.payments?.filter(p => p.verified).reduce((sum, p) => sum + p.amount, 0) || 0;
-  const isFullyPaid = invoice && paidAmount >= (invoice.total || 0);
+  const isFullyPaid = invoice && paidAmount >= (invoiceTotal || 0);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
@@ -44,7 +45,7 @@ export default function BatchCard({ batch, index = 0 }) {
               <div className="text-sm">
                 <span className="text-gray-500">Amount:</span>{" "}
                 <span className="font-semibold text-indigo-600">
-                  ₹{invoice.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                  ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </span>
               </div>
             )}
@@ -100,12 +101,31 @@ export default function BatchCard({ batch, index = 0 }) {
           <div className="flex justify-between items-center">
             <span className="text-xs font-medium text-gray-700">Invoice #{invoice.number}</span>
             <span className="text-sm font-bold text-gray-900">
-              ₹{invoice.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
             </span>
           </div>
 
           <div className="text-xs text-gray-500">
             Subtotal: ₹{invoice.subtotal.toLocaleString("en-IN")} · GST {invoice.gstRate}%: ₹{invoice.gstAmount.toLocaleString("en-IN")}
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <a
+              href={`/api/invoices/${invoice.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-[#0b69a3] hover:underline"
+            >
+              Download invoice (PDF)
+            </a>
+            <a
+              href={`/invoice/${invoice.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              View
+            </a>
           </div>
 
           {/* Payment Status */}
@@ -131,7 +151,7 @@ export default function BatchCard({ batch, index = 0 }) {
               ))}
               {!isFullyPaid && (
                 <div className="text-xs text-amber-600 font-medium mt-1">
-                  Remaining: ₹{(invoice.total - paidAmount).toLocaleString("en-IN")}
+                  Remaining: ₹{(Number(invoiceTotal || 0) - paidAmount).toLocaleString("en-IN")}
                 </div>
               )}
             </div>

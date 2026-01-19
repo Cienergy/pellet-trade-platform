@@ -9,10 +9,15 @@ async function handler(req, res) {
 
   if (req.method === "PATCH") {
     try {
-      // Update batch status to COMPLETED
+      const { leftFromSite } = req.body;
+      
+      // Update batch status to COMPLETED and track when it left the site
       const batch = await prisma.orderBatch.update({
         where: { id: batchId },
-        data: { status: "COMPLETED" },
+        data: { 
+          status: "COMPLETED",
+          leftFromSiteAt: leftFromSite ? new Date() : null,
+        },
         include: {
           order: {
             include: {

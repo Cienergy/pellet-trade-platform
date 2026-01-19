@@ -22,6 +22,9 @@ enum UserRole {
 
 enum OrderStatus {
   CREATED
+  PENDING_APPROVAL
+  ACCEPTED
+  REJECTED
   IN_PROGRESS
   COMPLETED
 }
@@ -158,6 +161,10 @@ model Order {
   orgId              String
   status             OrderStatus @default(CREATED)
   requestedQuantityMT Float?      // Original order quantity requested by buyer
+  deliveryLocation   String?      // Buyer-provided delivery location (city/site/address label)
+  orderSource        String       @default("WEB") // For BI attribution (WEB/ERP/ADMIN/etc.)
+  notes              String?      // Optional buyer notes for Ops/Finance context
+  rejectionReason    String?      // Reason for rejection (if rejected by Ops)
   createdAt          DateTime    @default(now())
   createdBy          String
 
@@ -174,6 +181,7 @@ model OrderBatch {
   quantityMT Float
   status     BatchStatus @default(CREATED)
   deliveryAt DateTime?
+  leftFromSiteAt DateTime? // When batch left the factory site
   createdAt  DateTime    @default(now())
   createdBy  String
 

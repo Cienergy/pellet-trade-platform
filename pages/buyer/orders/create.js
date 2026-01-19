@@ -7,11 +7,11 @@ export default function CreateOrder() {
   const router = useRouter();
   const { productId } = router.query;
   const [products, setProducts] = useState([]);
-  const [sites, setSites] = useState([]);
   const [form, setForm] = useState({
     productId: productId || "",
-    siteId: "",
     quantityMT: "",
+    deliveryLocation: "",
+    notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -21,13 +21,9 @@ export default function CreateOrder() {
       fetch("/api/buyer/catalog", { credentials: "include" })
         .then((r) => r.json())
         .catch(() => []),
-      fetch("/api/admin/sites", { credentials: "include" })
-        .then((r) => r.json())
-        .catch(() => []),
-    ]).then(([prods, sts]) => {
+    ]).then(([prods]) => {
       // Ensure only arrays are set in state
       if (Array.isArray(prods)) setProducts(prods);
-      if (Array.isArray(sts)) setSites(sts);
     });
   }, []);
 
@@ -121,21 +117,32 @@ export default function CreateOrder() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Site
+              Delivery location
             </label>
-            <select
+            <input
+              type="text"
               className="w-full border p-2 rounded"
-              value={form.siteId}
-              onChange={(e) => setForm({ ...form, siteId: e.target.value })}
+              placeholder="e.g., Plant 2, MIDC Pune / Address label"
+              value={form.deliveryLocation}
+              onChange={(e) => setForm({ ...form, deliveryLocation: e.target.value })}
               required
-            >
-              <option value="">Select Site</option>
-              {Array.isArray(sites) && sites.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} - {s.city}, {s.state}
-                </option>
-              ))}
-            </select>
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              Ops will choose the supplying factory site while creating batches.
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              className="w-full border p-2 rounded"
+              rows={3}
+              placeholder="Unloading constraints, preferred time, contact person, etc."
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
           </div>
 
           <div>

@@ -10,41 +10,54 @@ async function handler(req, res) {
       return res.status(403).json({ error: "Only buyers can create orders" });
     }
 
-    const { productId, siteId, quantityMT } = req.body;
+    const { productId, quantityMT, deliveryLocation, notes } = req.body;
 
-    if (!productId || !siteId || !quantityMT) {
+    if (!productId || !quantityMT || !deliveryLocation) {
       return res.status(400).json({
-        error: "productId, siteId, and quantityMT are required",
+        error: "productId, quantityMT, and deliveryLocation are required",
       });
     }
 
-    // Create order with requested quantity
+    // Create order with requested quantity (NO batches created - Ops will create batches)
     const requestedQty = Number(quantityMT);
+    
+    // Explicitly create order WITHOUT any batches - status is PENDING_APPROVAL
     const order = await prisma.order.create({
       data: {
         orgId: session.orgId,
         createdBy: session.userId,
-        status: "CREATED",
+        status: "PENDING_APPROVAL", // Order needs Ops approval first
         requestedQuantityMT: requestedQty, // Store original requested quantity
-        batches: {
-          create: {
-            productId,
-            siteId,
-            quantityMT: requestedQty,
-            status: "CREATED",
-            createdBy: session.userId,
-          },
-        },
+        deliveryLocation: String(deliveryLocation),
+        orderSource: "WEB",
+        notes: notes ? String(notes) : null,
+        // IMPORTANT: No batches array here - batches will be created by Ops after acceptance
       },
       include: {
-        batches: {
-          include: {
-            product: true,
-            site: true,
-          },
-        },
+        batches: true, // Include empty batches array to verify no batches were created
       },
     });
+
+    // Verify no batches were created (safety check)
+    if (order.batches && order.batches.length > 0) {
+      console.error(`WARNING: Order ${order.id} was created with ${order.batches.length} batches. This should not happen!`);
+      // Delete any auto-created batches
+      await prisma.orderBatch.deleteMany({
+        where: { orderId: order.id },
+      });
+      // Reload order without batches
+      const cleanOrder = await prisma.order.findUnique({
+        where: { id: order.id },
+        include: { batches: true },
+      });
+      await logAudit({
+        actorId: session.userId,
+        entity: "order",
+        entityId: order.id,
+        action: "created",
+      });
+      return res.status(201).json(cleanOrder);
+    }
 
     await logAudit({
       actorId: session.userId,

@@ -4,8 +4,11 @@
     "private": true,
     "scripts": {
         "dev": "next dev -p 3000",
-        "build": "next build",
-        "start": "next start -p 3000"
+        "build": "prisma generate && next build",
+        "start": "next start -p 3000",
+        "postinstall": "prisma generate",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate deploy"
     },
     "dependencies": {
         "@prisma/client": "^6.19.1",

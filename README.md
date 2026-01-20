@@ -209,5 +209,76 @@ touch orders.json
 echo '{"orders":[]}' > orders.json
 ```
 
+---
+
+## **🚀 Vercel Deployment**
+
+This application is configured for deployment on Vercel with multi-device session support and automatic inactivity timeout.
+
+### **Prerequisites**
+
+1. A PostgreSQL database (Vercel Postgres, Supabase, or any PostgreSQL provider)
+2. A Vercel account
+
+### **Deployment Steps**
+
+1. **Push your code to GitHub/GitLab/Bitbucket**
+
+2. **Import your project to Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Click "New Project"
+   - Import your repository
+
+3. **Configure Environment Variables**
+   In the Vercel dashboard, add the following environment variables:
+   ```
+   DATABASE_URL=postgresql://user:password@host:5432/database
+   NODE_ENV=production
+   ```
+
+4. **Deploy**
+   - Vercel will automatically detect Next.js
+   - The build process will:
+     - Run `prisma generate` (via postinstall script)
+     - Run `next build`
+     - Deploy your application
+
+5. **Run Database Migrations**
+   After deployment, run migrations on your production database:
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Or use Vercel's CLI:
+   ```bash
+   vercel env pull .env.production
+   npx prisma migrate deploy
+   ```
+
+### **Session Management Features**
+
+- **Multi-Device Support**: Users can log in from multiple devices simultaneously. Each login creates a separate session token.
+- **15-Minute Inactivity Timeout**: Sessions automatically expire after 15 minutes of inactivity. Activity is tracked on every API request.
+- **30-Day Maximum Session Age**: Sessions have a maximum lifetime of 30 days, regardless of activity.
+
+### **Vercel Configuration**
+
+The project includes:
+- `vercel.json` - Vercel deployment configuration
+- Updated `next.config.js` - Optimized for Vercel's serverless functions
+- `package.json` - Includes `postinstall` script for Prisma client generation
+
+### **Troubleshooting**
+
+**Issue: Prisma Client not found**
+- Solution: Ensure `DATABASE_URL` is set correctly in Vercel environment variables
+- The `postinstall` script should automatically generate the Prisma client
+
+**Issue: Database connection errors**
+- Solution: Verify your `DATABASE_URL` is correct and the database is accessible from Vercel's IP ranges
+- For Vercel Postgres, the connection string is automatically provided
+
+**Issue: Migrations not applied**
+- Solution: Run `npx prisma migrate deploy` manually after first deployment
+
 
 

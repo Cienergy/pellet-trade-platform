@@ -23,7 +23,7 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900">
-              Cienergy Pellet Trading Platform
+              Cienergy Customer Portal
             </h1>
             
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -38,7 +38,7 @@ export default function Home() {
                 onClick={() => router.push("/login")}
                 className="px-10 py-4 bg-[#0b69a3] text-white text-lg font-semibold rounded-lg hover:bg-[#095b88] transition-colors shadow-lg hover:shadow-xl"
               >
-                Login to Platform
+                Login
               </button>
             </div>
           </div>

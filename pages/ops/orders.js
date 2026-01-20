@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { showToast } from "../../components/Toast";
-import { ClipboardIcon, CheckCircleIcon, XCircleIcon, PackageIcon, FactoryIcon, ArrowRightIcon } from "../../components/Icons";
+import { ClockIcon, CheckCircleIcon, XCircleIcon, PackageIcon, FactoryIcon } from "../../components/Icons";
 
 export default function OpsOrders() {
   const router = useRouter();

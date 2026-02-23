@@ -28,6 +28,7 @@ async function handler(req, res) {
         createdBy: session.userId,
         status: "PENDING_APPROVAL", // Order needs Ops approval first
         requestedQuantityMT: requestedQty, // Store original requested quantity
+        requestedProductId: productId, // Store requested product ID
         deliveryLocation: String(deliveryLocation),
         orderSource: "WEB",
         notes: notes ? String(notes) : null,
@@ -90,6 +91,7 @@ async function handler(req, res) {
           },
         },
         org: true,
+        requestedProduct: true, // Include requested product information
       },
       orderBy: { createdAt: "desc" },
     });

@@ -32,8 +32,21 @@ async function handler(req, res) {
         (b) => b.status === "COMPLETED"
       );
 
-      // If all batches are completed, mark order as completed
-      if (allBatchesCompleted) {
+      // Calculate total batched quantity
+      const totalBatchedMT = batch.order.batches.reduce(
+        (sum, b) => sum + b.quantityMT,
+        0
+      );
+      const requestedMT = batch.order.requestedQuantityMT || 0;
+
+      // Order should only be marked as COMPLETED if:
+      // 1. All batches are completed AND
+      // 2. Total batched quantity meets or exceeds requested quantity
+      const shouldCompleteOrder = allBatchesCompleted && 
+                                  requestedMT > 0 && 
+                                  totalBatchedMT >= requestedMT;
+
+      if (shouldCompleteOrder) {
         await prisma.order.update({
           where: { id: batch.orderId },
           data: { status: "COMPLETED" },
@@ -49,7 +62,11 @@ async function handler(req, res) {
 
       return res.status(200).json({
         batch,
-        orderCompleted: allBatchesCompleted,
+        orderCompleted: shouldCompleteOrder,
+        allBatchesCompleted,
+        totalBatchedMT,
+        requestedMT,
+        remainingMT: Math.max(0, requestedMT - totalBatchedMT),
       });
     } catch (err) {
       console.error("COMPLETE BATCH ERROR:", err);

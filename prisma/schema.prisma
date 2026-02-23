@@ -38,6 +38,12 @@ enum BatchStatus {
   COMPLETED
 }
 
+enum PaymentTerm {
+  NET_30
+  NET_60
+  NET_90
+}
+
 /**
  * =========================
  * CORE
@@ -49,10 +55,12 @@ model Organization {
   name      String
   gst       String?
   state     String
+  buyerMargin Float? // Buyer-level margin data placeholder
   createdAt DateTime @default(now())
 
-  users  User[]
-  orders Order[]
+  users    User[]
+  orders   Order[]
+  contracts Contract[]
 }
 
 model User {
@@ -96,6 +104,8 @@ model Product {
   inventories      Inventory[]
   inventoryHistory InventoryHistory[]
   batches          OrderBatch[]
+  requestedOrders  Order[] @relation("OrderRequestedProduct")
+  contracts        Contract[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -161,6 +171,7 @@ model Order {
   orgId              String
   status             OrderStatus @default(CREATED)
   requestedQuantityMT Float?      // Original order quantity requested by buyer
+  requestedProductId String?     // Product requested by buyer (before batches are created)
   deliveryLocation   String?      // Buyer-provided delivery location (city/site/address label)
   orderSource        String       @default("WEB") // For BI attribution (WEB/ERP/ADMIN/etc.)
   notes              String?      // Optional buyer notes for Ops/Finance context
@@ -170,20 +181,26 @@ model Order {
 
   org     Organization @relation(fields: [orgId], references: [id])
   creator User         @relation("OrderCreatedBy", fields: [createdBy], references: [id])
+  requestedProduct Product? @relation("OrderRequestedProduct", fields: [requestedProductId], references: [id])
   batches OrderBatch[]
 }
 
 model OrderBatch {
-  id         String      @id @default(uuid())
-  orderId    String
-  productId  String
-  siteId     String
-  quantityMT Float
-  status     BatchStatus @default(CREATED)
-  deliveryAt DateTime?
-  leftFromSiteAt DateTime? // When batch left the factory site
-  createdAt  DateTime    @default(now())
-  createdBy  String
+  id              String      @id @default(uuid())
+  orderId         String
+  productId       String
+  siteId          String
+  quantityMT      Float
+  committedMT     Float?      // Committed volume (manual reporting)
+  suppliedMT      Float?      // Supplied volume (manual reporting)
+  dispatchImageUrl String?    // Image uploaded when Ops dispatches material
+  status          BatchStatus @default(CREATED)
+  deliveryAt      DateTime?
+  leftFromSiteAt  DateTime?   // When batch left the factory site
+  dispatchedAt    DateTime?   // When material was dispatched for delivery
+  batchMargin     Float?      // Batch-level margin data placeholder
+  createdAt       DateTime    @default(now())
+  createdBy       String
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
@@ -204,12 +221,17 @@ model Invoice {
   batchId     String   @unique
   number      String
   subtotal    Float
-  gstType     String
-  gstRate     Float
-  gstAmount   Float
+  gstType     String   // IGST or CGST_SGST (immutable after generation)
+  gstRate     Float    // Immutable after generation
+  gstAmount   Float    // Immutable after generation
+  cgst        Float?   // CGST amount (for intra-state, immutable)
+  sgst        Float?   // SGST amount (for intra-state, immutable)
+  igst        Float?   // IGST amount (for inter-state, immutable)
   totalAmount Float
+  paymentTerm PaymentTerm // NET_30, NET_60, or NET_90
   status      String
   erpStatus   String   @default("PENDING")
+  syncedToERP Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   batch    OrderBatch @relation(fields: [batchId], references: [id])
@@ -251,6 +273,32 @@ model Session {
   lastActivityAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * =========================
+ * CONTRACTS & PRICING
+ * =========================
+ */
+
+model Contract {
+  id          String   @id @default(uuid())
+  orgId       String
+  productId   String?
+  name        String   // Contract name/identifier
+  pricePMT    Float?   // Contract-specific price per MT (optional, can override product price)
+  startDate   DateTime
+  endDate     DateTime?
+  active      Boolean  @default(true)
+  notes       String?  // Contract terms, conditions, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org     Organization @relation(fields: [orgId], references: [id])
+  product Product?     @relation(fields: [productId], references: [id])
+
+  @@index([orgId])
+  @@index([productId])
 }
 
 

@@ -127,7 +127,7 @@ export default function BuyerDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <div className="text-xs text-gray-600 mb-1">Total Order Value</div>
+                <div className="text-xs text-gray-600 mb-1">Total Order Value Processed</div>
                 <div className="text-xl font-bold text-[#0b69a3]">
                   ₹{stats.totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </div>

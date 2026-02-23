@@ -86,10 +86,31 @@ async function handler(req, res) {
   doc.fontSize(12).font("Helvetica-Bold").text("Amount Summary");
   doc.moveDown(0.5);
   doc.fontSize(10).font("Helvetica");
-  doc.text(`Subtotal: ${formatINR(invoice.subtotal)}`);
-  doc.text(`GST (${invoice.gstType} @ ${invoice.gstRate}%): ${formatINR(invoice.gstAmount)}`);
-  doc.moveDown(0.2);
+  doc.text(`Subtotal (Transaction Value): ${formatINR(invoice.subtotal)}`);
+  doc.moveDown(0.3);
+  
+  // Display GST breakdown based on type
+  if (invoice.gstType === "IGST") {
+    doc.text(`IGST (${invoice.gstRate}%): ${formatINR(invoice.igst || invoice.gstAmount)}`);
+  } else if (invoice.gstType === "CGST_SGST") {
+    const halfRate = invoice.gstRate / 2;
+    doc.text(`CGST (${halfRate}%): ${formatINR(invoice.cgst || 0)}`);
+    doc.text(`SGST (${halfRate}%): ${formatINR(invoice.sgst || 0)}`);
+    doc.text(`Total GST (${invoice.gstRate}%): ${formatINR(invoice.gstAmount)}`);
+  } else {
+    doc.text(`GST (${invoice.gstType} @ ${invoice.gstRate}%): ${formatINR(invoice.gstAmount)}`);
+  }
+  
+  doc.moveDown(0.3);
   doc.fontSize(12).font("Helvetica-Bold").text(`Total: ${formatINR(invoice.totalAmount)}`);
+  
+  // Payment Terms
+  doc.moveDown(0.5);
+  doc.fontSize(10).font("Helvetica");
+  const paymentTermLabel = invoice.paymentTerm 
+    ? invoice.paymentTerm.replace("NET_", "Net ") 
+    : "Net 30";
+  doc.text(`Payment Terms: ${paymentTermLabel}`, { underline: true });
 
   // Payments
   const verifiedPaid = (invoice.payments || [])
@@ -108,8 +129,18 @@ async function handler(req, res) {
   doc.text(`Pending verification: ${formatINR(pendingPaid)}`);
   doc.text(`Remaining: ${formatINR(remaining)}`);
 
-  doc.moveDown(2);
+  // ERP Sync Status
+  if (invoice.syncedToERP) {
+    doc.moveDown(1);
+    doc.fontSize(9).font("Helvetica").fillColor("#059669").text(`✓ Synced to ERP (${invoice.erpStatus})`, { align: "left" });
+  } else {
+    doc.moveDown(1);
+    doc.fontSize(9).font("Helvetica").fillColor("#6b7280").text(`ERP Status: ${invoice.erpStatus}`, { align: "left" });
+  }
+
+  doc.moveDown(1);
   doc.fontSize(9).font("Helvetica").fillColor("#6b7280").text("This is a system-generated invoice summary for operational use.", { align: "left" });
+  doc.text("GST fields are immutable after invoice generation. Invoice synced to ERP without recalculation.", { align: "left" });
 
   doc.end();
 }

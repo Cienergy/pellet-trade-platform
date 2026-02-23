@@ -7,16 +7,51 @@ async function handler(req, res) {
 
   const [pendingPayments, invoices, totalRevenue, verifiedPayments] =
     await Promise.all([
-      prisma.payment.count({ where: { verified: false } }),
-      prisma.invoice.count(),
+      prisma.payment.count({ 
+        where: { 
+          verified: false,
+          invoice: {
+            batch: {
+              order: {
+                status: { not: "REJECTED" }
+              }
+            }
+          }
+        } 
+      }),
+      prisma.invoice.count({
+        where: {
+          batch: {
+            order: {
+              status: { not: "REJECTED" }
+            }
+          }
+        }
+      }),
       prisma.invoice.aggregate({
+        where: {
+          batch: {
+            order: {
+              status: { not: "REJECTED" }
+            }
+          }
+        },
         _sum: { totalAmount: true },
       }),
       prisma.payment.count({ where: { verified: true } }),
     ]);
 
   const pendingAmount = await prisma.payment.aggregate({
-    where: { verified: false },
+    where: { 
+      verified: false,
+      invoice: {
+        batch: {
+          order: {
+            status: { not: "REJECTED" }
+          }
+        }
+      }
+    },
     _sum: { amount: true },
   });
 

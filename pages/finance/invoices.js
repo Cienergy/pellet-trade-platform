@@ -152,15 +152,26 @@ export default function FinanceInvoices() {
                 key={invoice.id}
                 className="bg-white rounded-xl border p-6 space-y-4 shadow-sm hover:shadow-md transition"
               >
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                   <div>
                     <div className="text-sm text-gray-500">Invoice Number</div>
                     <div className="font-semibold">{invoice.number}</div>
                   </div>
                   <div>
+                    <div className="text-sm text-gray-500">Order ID</div>
+                    <div className="font-semibold text-blue-600">
+                      {invoice.orderId ? `#${invoice.orderId.slice(0, 8).toUpperCase()}` : "-"}
+                    </div>
+                  </div>
+                  <div>
                     <div className="text-sm text-gray-500">Date</div>
                     <div>
-                      {new Date(invoice.createdAt).toLocaleDateString()}
+                      {new Date(invoice.createdAt).toLocaleDateString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </div>
                   </div>
                   <div>
@@ -176,15 +187,19 @@ export default function FinanceInvoices() {
                   <div>
                     <div className="text-sm text-gray-500">Status</div>
                     <div
-                      className={`inline-block px-2 py-1 rounded text-sm ${
-                        invoice.status === "PAID"
+                      className={`inline-block px-2 py-1 rounded text-sm font-medium ${
+                        invoice.calculatedStatus === "PAID"
                           ? "bg-green-100 text-green-800"
-                          : invoice.status === "PENDING"
+                          : invoice.calculatedStatus === "PENDING_VERIFICATION"
                           ? "bg-yellow-100 text-yellow-800"
+                          : invoice.calculatedStatus === "PARTIAL"
+                          ? "bg-blue-100 text-blue-800"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {invoice.status}
+                      {invoice.calculatedStatus === "PENDING_VERIFICATION" 
+                        ? "PENDING VERIFICATION" 
+                        : invoice.calculatedStatus || "PENDING"}
                     </div>
                   </div>
                 </div>

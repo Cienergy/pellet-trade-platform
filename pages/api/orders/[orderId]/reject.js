@@ -9,6 +9,17 @@ async function handler(req, res) {
 
   if (req.method === "POST") {
     try {
+      // Verify session and role (double check for debugging)
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized - No session" });
+      }
+
+      if (session.role !== "OPS" && session.role !== "ADMIN") {
+        return res.status(403).json({ 
+          error: `Forbidden - Role '${session.role}' is not allowed. Required: OPS or ADMIN` 
+        });
+      }
+
       const { reason } = req.body;
 
       if (!reason || reason.trim().length === 0) {

@@ -34,10 +34,45 @@ async function handler(req, res) {
     orderBy: { createdAt: "desc" },
   });
 
+  // Helper function to escape CSV values
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return '""';
+    const stringValue = String(value);
+    // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
+  // Calculate invoice status for each invoice
+  const invoicesWithStatus = invoices.map((invoice) => {
+    const totalPaid = invoice.payments
+      .filter(p => p.verified)
+      .reduce((sum, p) => sum + p.amount, 0);
+    const hasUnverifiedPayments = invoice.payments.some(p => !p.verified);
+    const isFullyPaid = totalPaid >= invoice.totalAmount;
+    
+    let status = "PENDING";
+    if (isFullyPaid && !hasUnverifiedPayments) {
+      status = "PAID";
+    } else if (hasUnverifiedPayments) {
+      status = "PENDING_VERIFICATION";
+    } else if (totalPaid > 0) {
+      status = "PARTIAL";
+    }
+
+    return {
+      ...invoice,
+      calculatedStatus: status,
+    };
+  });
+
   // Convert to CSV
   const csv = [
     [
       "Invoice Number",
+      "Order ID",
       "Date",
       "Organization",
       "Product",
@@ -48,13 +83,14 @@ async function handler(req, res) {
       "Total Amount",
       "Status",
       "Payments",
-    ].join(","),
-    ...invoices.map((inv) => {
+    ].map(escapeCSV).join(","),
+    ...invoicesWithStatus.map((inv) => {
       const payments = inv.payments
         .map((p) => `INR ${p.amount.toLocaleString('en-IN')} (${p.mode})`)
         .join("; ");
       return [
         inv.number,
+        inv.batch?.order?.id ? `#${inv.batch.order.id.slice(0, 8).toUpperCase()}` : "",
         inv.createdAt.toISOString().split("T")[0],
         inv.batch.order.org.name,
         inv.batch.product.name,
@@ -63,9 +99,9 @@ async function handler(req, res) {
         `${inv.gstRate}%`,
         `INR ${inv.gstAmount.toLocaleString('en-IN')}`,
         `INR ${inv.totalAmount.toLocaleString('en-IN')}`,
-        inv.status,
+        inv.calculatedStatus === "PENDING_VERIFICATION" ? "PENDING VERIFICATION" : (inv.calculatedStatus || "PENDING"),
         payments || "None",
-      ].join(",");
+      ].map(escapeCSV).join(",");
     }),
   ].join("\n");
 

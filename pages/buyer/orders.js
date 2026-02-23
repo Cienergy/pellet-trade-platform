@@ -12,21 +12,34 @@ export default function BuyerOrders() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetch("/api/buyer/orders", { credentials: "include" })
-      .then((res) => {
+    // Add timestamp to bypass cache
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch(`/api/buyer/orders?t=${Date.now()}`, { 
+          credentials: "include",
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          }
+        });
+        
         if (res.status === 401 || res.status === 403) {
           router.replace("/login");
           return;
         }
-        return res.json();
-      })
-      .then((data) => {
+        
+        const data = await res.json();
         if (data) {
           setOrders(Array.isArray(data) ? data : []);
         }
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
   }, [router]);
 
   const filteredOrders = orders.filter((order) => {
@@ -115,8 +128,8 @@ export default function BuyerOrders() {
             </div>
 
             {/* Status Filter */}
-            <div className="flex gap-2">
-              {["all", "CREATED", "IN_PROGRESS", "COMPLETED"].map((status) => (
+            <div className="flex gap-2 flex-wrap">
+              {["all", "CREATED", "PENDING_APPROVAL", "ACCEPTED", "IN_PROGRESS", "REJECTED", "COMPLETED"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
@@ -126,7 +139,7 @@ export default function BuyerOrders() {
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  {status === "all" ? "All" : status.replace("_", " ")}
+                  {status === "all" ? "All" : status.replace(/_/g, " ")}
                 </button>
               ))}
             </div>

@@ -6,7 +6,19 @@ async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
   const payments = await prisma.payment.findMany({
-    where: { verified: false },
+    where: { 
+      verified: false,
+      // Exclude payments from rejected orders
+      invoice: {
+        batch: {
+          order: {
+            status: {
+              not: "REJECTED"
+            }
+          }
+        }
+      }
+    },
     include: {
       invoice: {
         include: {

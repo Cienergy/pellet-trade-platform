@@ -9,6 +9,17 @@ async function handler(req, res) {
 
   if (req.method === "POST") {
     try {
+      // Verify session and role (double check for debugging)
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized - No session" });
+      }
+
+      if (session.role !== "OPS" && session.role !== "ADMIN") {
+        return res.status(403).json({ 
+          error: `Forbidden - Role '${session.role}' is not allowed. Required: OPS or ADMIN` 
+        });
+      }
+
       // Check if order exists and is pending approval
       const order = await prisma.order.findUnique({
         where: { id: orderId },

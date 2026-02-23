@@ -2,6 +2,7 @@ import prisma from "../../../../lib/prisma";
 import requireAuth from "../../../../lib/requireAuth";
 import requireRole from "../../../../lib/requireRole";
 import { logAudit } from "../../../../lib/audit";
+import { calculateGST } from "../../../../lib/gst";
 
 async function handler(req, res) {
   const { orderId } = req.query;
@@ -82,13 +83,30 @@ async function handler(req, res) {
         });
       }
 
-      // Get product for pricing
+      // Get product, site, and order with org for pricing and GST calculation
       const product = await prisma.product.findUnique({
         where: { id: productId },
       });
 
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
+      }
+
+      const site = await prisma.site.findUnique({
+        where: { id: siteId },
+      });
+
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      const orderWithOrg = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { org: true },
+      });
+
+      if (!orderWithOrg || !orderWithOrg.org) {
+        return res.status(404).json({ error: "Order or organization not found" });
       }
 
       // Create batch
@@ -108,21 +126,36 @@ async function handler(req, res) {
         },
       });
 
-      // Auto-generate invoice for the batch
-      const subtotal = batch.quantityMT * product.pricePMT;
-      const gstRate = 5; // Default GST rate, can be made configurable
-      const gstAmount = (subtotal * gstRate) / 100;
-      const totalAmount = subtotal + gstAmount;
+      // Calculate transaction value (Quantity × Price) for GST
+      const transactionValue = batch.quantityMT * product.pricePMT;
+      
+      // Auto-classify intra/inter-state and calculate GST
+      const gstCalculation = calculateGST({
+        transactionValue,
+        buyerState: orderWithOrg.org.state,
+        sellerState: site.state,
+        gstRate: 12, // Default 12% GST, can be made configurable
+      });
+
+      // Payment term - default to NET_30, can be made configurable per order/contract
+      const paymentTerm = "NET_30"; // Will be enforced to NET_30, NET_60, or NET_90 only
+
+      // Generate invoice number
+      const invoiceNumber = `INV-${new Date().toISOString().slice(0, 7).replace(/-/, "")}-${String(Date.now()).slice(-6)}`;
 
       const invoice = await prisma.invoice.create({
         data: {
           batchId: batch.id,
-          number: `INV-${Date.now()}-${batch.id.slice(0, 8)}`,
-          subtotal,
-          gstType: "GST",
-          gstRate,
-          gstAmount,
-          totalAmount,
+          number: invoiceNumber,
+          subtotal: transactionValue,
+          gstType: gstCalculation.gstType,
+          gstRate: gstCalculation.gstRate,
+          gstAmount: gstCalculation.gstAmount,
+          cgst: gstCalculation.cgst,
+          sgst: gstCalculation.sgst,
+          igst: gstCalculation.igst,
+          totalAmount: gstCalculation.totalAmount,
+          paymentTerm: paymentTerm,
           status: "CREATED",
         },
       });

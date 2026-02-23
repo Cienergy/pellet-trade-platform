@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { showToast } from "../../components/Toast";
 import { ClockIcon, CheckCircleIcon, XCircleIcon, PackageIcon, FactoryIcon } from "../../components/Icons";
+import { formatISTDate } from "../../lib/dateUtils";
 
 export default function OpsOrders() {
   const router = useRouter();
@@ -13,6 +14,13 @@ export default function OpsOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [dispatchForm, setDispatchForm] = useState({
+    committedMT: "",
+    suppliedMT: "",
+    dispatchImage: null,
+  });
   const [batchForm, setBatchForm] = useState({
     productId: "",
     siteId: "",
@@ -20,6 +28,7 @@ export default function OpsOrders() {
     deliveryAt: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -166,31 +175,111 @@ export default function OpsOrders() {
   }
 
   async function completeBatch(batchId) {
-    if (!confirm("Mark this batch as completed and left from site?")) return;
+    // Find the batch from orders
+    const batch = orders
+      .flatMap(o => o.batches || [])
+      .find(b => b.id === batchId);
+    
+    if (batch) {
+      setSelectedBatch(batch);
+      setDispatchForm({
+        committedMT: batch.committedMT?.toString() || batch.quantityMT?.toString() || "",
+        suppliedMT: batch.suppliedMT?.toString() || batch.quantityMT?.toString() || "",
+        dispatchImage: null,
+      });
+      setShowDispatchModal(true);
+    }
+  }
 
+  async function handleDispatchAndComplete() {
+    if (!selectedBatch) return;
+
+    // Validate that image is provided (mandatory)
+    if (!dispatchForm.dispatchImage) {
+      showToast("Please upload a dispatch image. Image upload is mandatory.", "error");
+      return;
+    }
+
+    setDispatching(true);
     try {
-      const res = await fetch(`/api/batches/${batchId}/complete`, {
+      let dispatchImageUrl = null;
+
+      // Upload image (mandatory)
+      const formData = new FormData();
+      formData.append("batchId", selectedBatch.id);
+      formData.append("file", dispatchForm.dispatchImage);
+
+      const uploadRes = await fetch("/api/uploads/dispatch-image", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        showToast(err.error || "Failed to upload dispatch image. Image upload is required.", "error");
+        setDispatching(false);
+        return;
+      }
+
+      const { imageUrl } = await uploadRes.json();
+      dispatchImageUrl = imageUrl;
+
+      // Call dispatch API
+      const dispatchRes = await fetch("/api/ops/dispatch", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          batchId: selectedBatch.id,
+          committedMT: dispatchForm.committedMT ? Number(dispatchForm.committedMT) : undefined,
+          suppliedMT: dispatchForm.suppliedMT ? Number(dispatchForm.suppliedMT) : undefined,
+          dispatchImageUrl,
+        }),
+      });
+
+      if (!dispatchRes.ok) {
+        const err = await dispatchRes.json().catch(() => ({}));
+        showToast(err.error || "Failed to record dispatch", "error");
+        setDispatching(false);
+        return;
+      }
+
+      // Then complete the batch
+      const completeRes = await fetch(`/api/batches/${selectedBatch.id}/complete`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leftFromSite: true }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      if (completeRes.ok) {
+        const data = await completeRes.json();
         await loadData();
+        setShowDispatchModal(false);
+        setSelectedBatch(null);
+        setDispatchForm({ committedMT: "", suppliedMT: "", dispatchImage: null });
+        
         if (data.orderCompleted) {
-          showToast("Batch completed! All batches done - Order marked as COMPLETED.", "success");
+          showToast("Batch dispatched and completed! Order marked as COMPLETED.", "success");
         } else {
-          showToast("Batch marked as completed and left from site", "success");
+          // Check if there's remaining quantity
+          const remainingMT = data.remainingMT || 0;
+          if (remainingMT > 0) {
+            showToast(`Batch dispatched and completed. Order still has ${remainingMT.toFixed(2)} MT remaining. Create more batches to complete the order.`, "success");
+          } else {
+            showToast("Batch dispatched and marked as completed", "success");
+          }
         }
       } else {
-        const err = await res.json().catch(() => ({}));
+        const err = await completeRes.json().catch(() => ({}));
         showToast(err.error || "Failed to complete batch", "error");
       }
     } catch (error) {
-      console.error("Error completing batch:", error);
-      showToast("Failed to complete batch", "error");
+      console.error("Error dispatching and completing batch:", error);
+      showToast("Failed to dispatch and complete batch", "error");
+    } finally {
+      setDispatching(false);
     }
   }
 
@@ -350,8 +439,106 @@ export default function OpsOrders() {
         </div>
       )}
 
+      {/* Dispatch Modal */}
+      {showDispatchModal && selectedBatch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Dispatch & Complete Batch</h2>
+              <button
+                onClick={() => {
+                  setShowDispatchModal(false);
+                  setSelectedBatch(null);
+                  setDispatchForm({ committedMT: "", suppliedMT: "", dispatchImage: null });
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+              <div className="text-sm text-gray-600">
+                <div className="font-semibold mb-1">{selectedBatch.product?.name || "Unknown Product"}</div>
+                <div>Quantity: {selectedBatch.quantityMT?.toFixed(2)} MT</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Site: {selectedBatch.site?.name || "Unknown Site"}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Committed Volume (MT)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                value={dispatchForm.committedMT}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, committedMT: e.target.value })}
+                placeholder={selectedBatch.quantityMT?.toFixed(2)}
+              />
+              <p className="text-xs text-gray-500 mt-1">Volume committed to buyer</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Supplied Volume (MT)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                value={dispatchForm.suppliedMT}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, suppliedMT: e.target.value })}
+                placeholder={selectedBatch.quantityMT?.toFixed(2)}
+              />
+              <p className="text-xs text-gray-500 mt-1">Actual volume supplied</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dispatch Image <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                onChange={(e) => setDispatchForm({ ...dispatchForm, dispatchImage: e.target.files[0] || null })}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                <span className="text-red-600 font-medium">Required:</span> Upload image when material is dispatched for delivery
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleDispatchAndComplete}
+                disabled={dispatching || !dispatchForm.dispatchImage}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+              >
+                {dispatching ? "Processing..." : "Dispatch & Complete"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDispatchModal(false);
+                  setSelectedBatch(null);
+                  setDispatchForm({ committedMT: "", suppliedMT: "", dispatchImage: null });
+                }}
+                disabled={dispatching}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Batch Creation Modal */}
-      {selectedOrder && selectedOrder.status === "ACCEPTED" && !showRejectModal && (
+      {selectedOrder && selectedOrder.status === "ACCEPTED" && !showRejectModal && !showDispatchModal && (
         <BatchModal
           order={selectedOrder}
           products={products}
@@ -385,23 +572,35 @@ function OrderCard({ order, onAccept, onReject }) {
             <div>
               <div className="font-semibold text-gray-900">{order.org?.name || "Unknown Organization"}</div>
               <div className="text-sm text-gray-500">
-                {new Date(order.createdAt).toLocaleDateString()} · {order.deliveryLocation || "No delivery location"}
+                {formatISTDate(order.createdAt)} · {order.deliveryLocation || "No delivery location"}
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
+              <div className="text-xs text-gray-500 mb-1">Requested Product</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {order.requestedProduct?.name || order.requestedProduct?.type || "Not specified"}
+              </div>
+              {order.requestedProduct && (
+                <div className="text-xs text-gray-500 mt-1">
+                  {order.requestedProduct.type} • Grade: {order.requestedProduct.grade}
+                </div>
+              )}
+            </div>
+            <div>
               <div className="text-xs text-gray-500 mb-1">Requested Quantity</div>
               <div className="text-lg font-bold text-gray-900">{order.requestedQuantityMT?.toFixed(2) || "0.00"} MT</div>
             </div>
-            {order.notes && (
-              <div>
-                <div className="text-xs text-gray-500 mb-1">Notes</div>
-                <div className="text-sm text-gray-700">{order.notes}</div>
-              </div>
-            )}
           </div>
+          
+          {order.notes && (
+            <div className="mb-3">
+              <div className="text-xs text-gray-500 mb-1">Notes</div>
+              <div className="text-sm text-gray-700">{order.notes}</div>
+            </div>
+          )}
 
           {isRejected && order.rejectionReason && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
@@ -462,7 +661,7 @@ function AcceptedOrderCard({ order, products, sites, onAddBatch, onStartBatch, o
             <div>
               <div className="font-semibold text-gray-900">{order.org?.name || "Unknown"}</div>
               <div className="text-sm text-gray-500">
-                {new Date(order.createdAt).toLocaleDateString()} · {order.deliveryLocation || "No location"}
+                {formatISTDate(order.createdAt)} · {order.deliveryLocation || "No location"}
               </div>
             </div>
           </div>
@@ -523,7 +722,7 @@ function AcceptedOrderCard({ order, products, sites, onAddBatch, onStartBatch, o
                     </div>
                     {batch.deliveryAt && (
                       <div className="text-xs text-gray-500">
-                        Delivery: {new Date(batch.deliveryAt).toLocaleDateString()}
+                        Delivery: {formatISTDate(batch.deliveryAt)}
                       </div>
                     )}
                     {batch.invoice && (

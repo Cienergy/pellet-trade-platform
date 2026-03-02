@@ -1,14 +1,18 @@
-import { supabase } from '../../../../lib/supabaseServer';
+import { supabase } from "../../../../lib/supabaseServer";
 
 export default async function handler(req, res) {
   const { paymentId } = req.query;
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   if (!paymentId) {
-    return res.status(400).json({ error: 'Missing paymentId' });
+    return res.status(400).json({ error: "Missing paymentId" });
+  }
+
+  if (!supabase) {
+    return res.status(503).json({ error: "Receipt service not configured (Supabase)" });
   }
 
   try {

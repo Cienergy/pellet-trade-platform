@@ -1,284 +1,188 @@
-# **Pellet Trade Platform**
+# Pellet Trade Platform
 
-A lightweight prototype of an online pellet-ordering platform for buyers to:
-
-* browse pellets by region, feedstock, lead-time
-* place **immediate** or **scheduled** orders
-* generate **batch numbers** automatically
-* generate **invoices (PDF)**
-* configure **three payment models** (full, deposit, installment)
-* track an order’s **payment schedule** and mark payments as completed
-* store orders locally in `orders.json` for demo/testing
-
-Built using **Next.js**, **Node/Express-style API routes**, and optional **Stripe Checkout** support.
+A full-featured pellet trading platform for buyers, operations, finance, and admin. Built with **Next.js**, **PostgreSQL** (Prisma), and role-based access.
 
 ---
 
-## **✨ Key Features**
+## Features
 
-### **Buyer Experience**
+### Buyer
 
-* Select region (North, South, East, West)
-* Filter pellets by feedstock → Napier, Groundnut shell, Mustard stalk, Cotton stalk, Soya stalk, Coriander husk, Cane trash
-* Real-time availability:
+- Browse products by region and feedstock; place orders with requested quantity and delivery location.
+- Track order status (Created → Pending Approval → Accepted → In Progress → Completed).
+- View batches, invoices, and payment due dates; upload payment proof and pay against **Net 30 / Net 60 / Net 90** terms only.
+- View consumption patterns (order history, product breakdown, monthly trends).
 
-  * **Available Now** (in-region inventory)
-  * **Available Within X Days** (manufacturable)
-* Schedule orders across multiple batches
+### Operations (Ops)
 
-### **Payment Options**
+- Review and accept or reject orders; create batches (product, site, quantity, delivery date).
+- Track **committed vs supplied** volumes with manual reporting; upload **mandatory dispatch image** when marking batch complete.
+- **Dispatch timelines**: view batch events (created, left site, dispatched, delivery, invoiced) and delivery performance (days to delivery, transit days, on time).
+- Download **delivery challan (PDF)** for dispatched batches; optional e-way bill fields on batch.
+- Update inventory by site.
 
-1. **Full Payment on Delivery**
-2. **Deposit Payment** (e.g., 50% now, 50% on delivery)
-3. **Installments** (splits equally across N installments)
+### Finance
 
-### **Server-Side Automations**
+- Generate invoices with **GST at transaction value** (Quantity × Price); auto **CGST/SGST** (intra-state) or **IGST** (inter-state); immutable tax fields; sync to ERP when finalized.
+- **Payment terms**: Net 30, Net 60, Net 90 only; **default payment term per buyer** (Organization) used when creating invoices.
+- **Receivables & aging**: overdue count/amount, due-in-7-days, aging buckets (0–30, 31–60, 61–90, 90+ days).
+- **Sales reports**: period summary (by product, by buyer, monthly); **orders export (CSV)** by date range.
+- **Activity log**: view user and system actions (entity, action, actor, time).
+- Verify payment proofs; download invoice PDFs.
 
-* Auto-generated:
+### Admin
 
-  * `orderId`
-  * `invoiceNumber`
-  * `batchNumber` for each scheduled batch
-* Accurate calculation of:
+- Manage **buyers (organizations)**: name, GST, state; **buyer-level margin** and **default payment term**; optional **credit limit** placeholder.
+- **Batch-level margin** and **e-way bill** placeholders on batches.
+- **Contracts**: pricing models (no automated enforcement); link org/product, price per MT, dates.
+- **Activity log**: filter by entity/action; used for audits and policy design.
+- Users, products, sites, BI dashboard.
 
-  * `subtotal`
-  * `transport charges`
-  * `GST (12%)`
-  * `grand total`
+### Platform behaviour
 
-### **Invoices**
-
-* Generated as PDF (via Puppeteer, local env only)
-* Includes:
-
-  * Item list
-  * Batch numbers
-  * Payment schedule
-  * Tax, transport, total
-
-### **Payment Management (Demo-Friendly)**
-
-* “Pay” button → Stripe Checkout (if configured)
-* Fallback “Mark As Paid” for demo/testing
-* Order automatically becomes **Completed** once all payments marked as paid
+- **Order completion**: order is marked Completed only when all batches are completed **and** total batched quantity ≥ requested quantity.
+- **Payment**: only Net 30 / Net 60 / Net 90; buyer can pay only the invoice amount (no partial arbitrary amounts).
+- **Audit**: login, order accept/reject, batch create/complete, dispatch, invoice create, payment verify, contract create, org margin/terms updates.
 
 ---
 
-## **📂 Project Structure**
+## Tech stack
+
+- **Next.js** (Pages Router), **Prisma**, **PostgreSQL**
+- **bcrypt** (passwords), cookie-based **sessions** (multi-device, inactivity timeout)
+- **PDFKit** (invoice PDF, delivery challan PDF)
+- Optional **Supabase** storage for payment proof and dispatch images
+
+---
+
+## Project structure
 
 ```
 pellet-trade-platform/
 ├── pages/
-│   ├── index.js            (Home)
-│   ├── order.js            (Buyer's order page)
-│   ├── orders.js           (Order management + payments)
 │   ├── api/
-│   │   ├── products.js     (Pellet catalog)
-│   │   ├── orders.js       (Order creation + invoice generation)
-│   │   └── payments.js     (Payment handling + Stripe integration)
-├── components/
-│   ├── Header.jsx
-│   ├── Cart.jsx
-│   ├── ProductCard.jsx
-│   ├── ScheduleModal.jsx
-│   └── Notifications.jsx
-├── styles/
-│   └── globals.css
-├── public/
-│   └── invoices/           (Generated PDFs)
-├── orders.json              (Stored / mock DB)
+│   │   ├── auth/          # login, logout, me
+│   │   ├── orders/        # list, create, accept, reject, batches
+│   │   ├── batches/       # start, complete, challan PDF, margin/eway PATCH
+│   │   ├── invoices/      # create, PDF, list
+│   │   ├── payments/      # create, verify, receipt
+│   │   ├── finance/       # dashboard, receivables, sales-report, orders/export, payments/history
+│   │   ├── admin/         # dashboard, buyers, organizations, contracts, activity-log, bi-dashboard
+│   │   ├── ops/           # dashboard, orders, dispatch, dispatch-timeline, inventory
+│   │   ├── buyer/         # orders, consumption-patterns, catalog, bi-dashboard
+│   │   └── uploads/       # payment-proof, dispatch-image
+│   ├── buyer/             # dashboard, orders, catalog, create-order
+│   ├── finance/           # dashboard, invoices, payments, receivables, reports
+│   ├── ops/               # dashboard, orders, dispatch-timeline, inventory
+│   ├── admin/             # dashboard, buyers, users, products, sites, activity-log
+│   ├── login.js
+│   └── ...
+├── components/            # BatchCard, PayInvoiceForm, Icons, Layout, ...
+├── lib/                   # prisma, auth, session, requireAuth, requireRole, gst, audit
+├── prisma/
+│   ├── schema.prisma      # Organization, User, Product, Site, Order, OrderBatch, Invoice, Payment, Contract, AuditLog
+│   └── migrations/
 └── package.json
 ```
 
 ---
 
-## **🛠️ Running the Project Locally**
+## Setup
 
-### **1. Install dependencies**
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### **2. Start the dev server**
+### 2. Environment
+
+Create `.env`:
+
+```
+DATABASE_URL="postgresql://user:password@localhost:5432/pellet_trade"
+```
+
+Optional (for payment proof / dispatch image uploads):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+### 3. Database
+
+```bash
+npx prisma generate
+npx prisma migrate deploy
+```
+
+### 4. Run
 
 ```bash
 npm run dev
 ```
 
-Visit:
-
-```
-http://localhost:3000
-```
-
-### **3. Verify Orders API**
-
-```bash
-curl http://localhost:3000/api/orders
-```
+Open [http://localhost:3000](http://localhost:3000). Log in with a user that has role `BUYER`, `OPS`, `FINANCE`, or `ADMIN` (see your seed or create users via Admin).
 
 ---
 
-## **💳 Optional: Stripe Integration**
+## Key API endpoints
 
-### **Enable Stripe Checkout**
-
-1. Install Stripe SDK:
-
-```bash
-npm install stripe
-```
-
-2. Create `.env.local` file:
-
-```
-STRIPE_SECRET_KEY=sk_test_**************
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-```
-
-3. Restart server:
-
-```bash
-npm run dev
-```
-
-If Stripe is not configured, the payment flow will automatically use **mock-pay** (demo mode).
+| Area        | Method | Endpoint | Description |
+|------------|--------|----------|-------------|
+| Auth       | POST   | `/api/auth/login` | Login (audit: login) |
+| Orders     | GET/POST | `/api/orders` | List / create orders |
+| Orders     | POST   | `/api/orders/[id]/accept` | Ops accept order |
+| Orders     | POST   | `/api/orders/[id]/reject` | Ops reject order |
+| Batches    | POST   | `/api/orders/[orderId]/batches` | Create batch |
+| Batches    | PATCH  | `/api/batches/[batchId]/complete` | Mark batch complete (dispatch) |
+| Batches    | PATCH  | `/api/batches/[batchId]` | Update batchMargin, eWayBill |
+| Batches    | GET    | `/api/batches/[batchId]/challan` | Delivery challan PDF |
+| Ops        | GET    | `/api/ops/dispatch-timeline` | Dispatch timelines (orderId/batchId optional) |
+| Ops        | POST   | `/api/ops/dispatch` | Set dispatch image, committed/supplied |
+| Invoices   | POST   | `/api/invoices/create` | Create invoice (GST, default payment term from org) |
+| Invoices   | GET    | `/api/invoices/[id]/pdf` | Invoice PDF |
+| Finance    | GET    | `/api/finance/dashboard` | KPIs including overdue, due-in-7-days |
+| Finance    | GET    | `/api/finance/receivables` | Overdue list + aging buckets |
+| Finance    | GET    | `/api/finance/sales-report` | Sales summary (from, to) |
+| Finance    | GET    | `/api/finance/orders/export` | Orders CSV (from, to, status) |
+| Admin      | GET    | `/api/admin/activity-log` | Activity log (entity, action filters) |
+| Admin      | PATCH  | `/api/admin/organizations/[id]` | Update buyer margin, defaultPaymentTerm, creditLimit |
 
 ---
 
-## **📦 How Orders Are Stored**
+## Payment terms
 
-All data is stored in `orders.json` at the root of the project.
-
-Each order stores:
-
-```json
-{
-  "orderId": "ORD-20251209-0001",
-  "invoiceNumber": "INV-202512-0001",
-  "items": [...],
-  "payments": [...],
-  "totals": {...},
-  "transport": {...},
-  "invoiceUrl": "/invoices/INV-202512-0001.pdf"
-}
-```
+- Only **Net 30**, **Net 60**, and **Net 90** are allowed.
+- Each buyer (Organization) can have a **default payment term**; invoice creation uses it when no term is supplied.
+- Buyers pay the **exact invoice amount** (no arbitrary partial amounts) per invoice.
 
 ---
 
-## **📑 Generating Invoices**
+## GST and invoicing
 
-Invoices are generated server-side in `/public/invoices/`
-Only works **locally** because Puppeteer cannot run on Vercel without Chrome-AWS-Lambda.
-
----
-
-## **🧪 Testing Scenarios**
-
-### **Scheduled order with deposit**
-
-1. Go to Order page
-2. Add a scheduled order
-3. Choose **Deposit** (e.g., 50%)
-4. Checkout
-5. Open Orders page → Payment Schedule visible
-6. Click **Pay** / **Mark as paid**
-
-### **Installment plan**
-
-1. Choose **Installments** (e.g., 3)
-2. Confirm batch dates
-3. Checkout
-4. Observe that installments are spaced monthly
-
-### **Multiple batches**
-
-1. Set 2–4 batches in Schedule modal
-2. Each batch receives a unique batch number in invoice
+- GST is computed **at invoice generation** on **transaction value** (Quantity × Price).
+- Supply is auto-classified **intra-state** (CGST+SGST) or **inter-state** (IGST).
+- Tax fields are stored and not recalculated after finalization; finalized invoices can be synced to ERP.
 
 ---
 
-## **🧹 Reset Orders**
+## Deployment (e.g. Vercel)
 
-To clear the system:
-
-```bash
-rm orders.json
-touch orders.json
-echo '{"orders":[]}' > orders.json
-```
+1. Set `DATABASE_URL` (and optional Supabase vars) in the project environment.
+2. Run migrations: `npx prisma migrate deploy`.
+3. Build: `npm run build`. The app uses `prisma generate` in postinstall.
 
 ---
 
-## **🚀 Vercel Deployment**
+## Optional: Stripe
 
-This application is configured for deployment on Vercel with multi-device session support and automatic inactivity timeout.
+For payment gateway integration, add Stripe keys to `.env` and use your existing payment flow; the platform currently focuses on **Net 30/60/90** with payment proof upload and finance verification.
 
-### **Prerequisites**
+---
 
-1. A PostgreSQL database (Vercel Postgres, Supabase, or any PostgreSQL provider)
-2. A Vercel account
+## License
 
-### **Deployment Steps**
-
-1. **Push your code to GitHub/GitLab/Bitbucket**
-
-2. **Import your project to Vercel**
-   - Go to [vercel.com](https://vercel.com)
-   - Click "New Project"
-   - Import your repository
-
-3. **Configure Environment Variables**
-   In the Vercel dashboard, add the following environment variables:
-   ```
-   DATABASE_URL=postgresql://user:password@host:5432/database
-   NODE_ENV=production
-   ```
-
-4. **Deploy**
-   - Vercel will automatically detect Next.js
-   - The build process will:
-     - Run `prisma generate` (via postinstall script)
-     - Run `next build`
-     - Deploy your application
-
-5. **Run Database Migrations**
-   After deployment, run migrations on your production database:
-   ```bash
-   npx prisma migrate deploy
-   ```
-   Or use Vercel's CLI:
-   ```bash
-   vercel env pull .env.production
-   npx prisma migrate deploy
-   ```
-
-### **Session Management Features**
-
-- **Multi-Device Support**: Users can log in from multiple devices simultaneously. Each login creates a separate session token.
-- **15-Minute Inactivity Timeout**: Sessions automatically expire after 15 minutes of inactivity. Activity is tracked on every API request.
-- **30-Day Maximum Session Age**: Sessions have a maximum lifetime of 30 days, regardless of activity.
-
-### **Vercel Configuration**
-
-The project includes:
-- `vercel.json` - Vercel deployment configuration
-- Updated `next.config.js` - Optimized for Vercel's serverless functions
-- `package.json` - Includes `postinstall` script for Prisma client generation
-
-### **Troubleshooting**
-
-**Issue: Prisma Client not found**
-- Solution: Ensure `DATABASE_URL` is set correctly in Vercel environment variables
-- The `postinstall` script should automatically generate the Prisma client
-
-**Issue: Database connection errors**
-- Solution: Verify your `DATABASE_URL` is correct and the database is accessible from Vercel's IP ranges
-- For Vercel Postgres, the connection string is automatically provided
-
-**Issue: Migrations not applied**
-- Solution: Run `npx prisma migrate deploy` manually after first deployment
-
-
-
+Proprietary / internal use.

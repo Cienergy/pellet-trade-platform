@@ -51,12 +51,14 @@ enum PaymentTerm {
  */
 
 model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  gst       String?
-  state     String
-  buyerMargin Float? // Buyer-level margin data placeholder
-  createdAt DateTime @default(now())
+  id                  String       @id @default(uuid())
+  name                String
+  gst                 String?
+  state               String
+  buyerMargin         Float?       // Buyer-level margin data placeholder
+  defaultPaymentTerm  PaymentTerm? // Default NET_30/NET_60/NET_90 for this buyer
+  creditLimit         Float?       // Optional credit limit placeholder (for future policy)
+  createdAt          DateTime     @default(now())
 
   users    User[]
   orders   Order[]
@@ -199,6 +201,8 @@ model OrderBatch {
   leftFromSiteAt  DateTime?   // When batch left the factory site
   dispatchedAt    DateTime?   // When material was dispatched for delivery
   batchMargin     Float?      // Batch-level margin data placeholder
+  eWayBillNumber  String?     // E-way bill number (optional, for GST compliance)
+  eWayBillDate    DateTime?   // E-way bill date
   createdAt       DateTime    @default(now())
   createdBy       String
 

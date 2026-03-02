@@ -65,8 +65,8 @@ export default function BatchCard({ batch, index = 0 }) {
             </div>
           </div>
 
-          {/* Quantity and Amount */}
-          <div className="flex items-center gap-4 mt-2">
+          {/* Quantity, Amount, Margin placeholder */}
+          <div className="flex items-center gap-4 mt-2 flex-wrap">
             <div className="text-sm">
               <span className="text-gray-500">Quantity:</span>{" "}
               <span className="font-semibold text-gray-900">{batch.quantityMT.toFixed(2)} MT</span>
@@ -77,6 +77,12 @@ export default function BatchCard({ batch, index = 0 }) {
                 <span className="font-semibold text-indigo-600">
                   ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </span>
+              </div>
+            )}
+            {batch.batchMargin != null && (
+              <div className="text-sm">
+                <span className="text-gray-500">Margin:</span>{" "}
+                <span className="font-semibold text-gray-700">₹{Number(batch.batchMargin).toLocaleString("en-IN")}</span>
               </div>
             )}
           </div>

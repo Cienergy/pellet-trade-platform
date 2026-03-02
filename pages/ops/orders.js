@@ -725,6 +725,9 @@ function AcceptedOrderCard({ order, products, sites, onAddBatch, onStartBatch, o
                         Delivery: {formatISTDate(batch.deliveryAt)}
                       </div>
                     )}
+                    {batch.batchMargin != null && (
+                      <div className="text-xs text-gray-600">Margin: ₹{Number(batch.batchMargin).toLocaleString("en-IN")}</div>
+                    )}
                     {batch.invoice && (
                       <div className="mt-2 text-sm">
                         <span className="text-gray-600">Invoice:</span>{" "}
@@ -759,6 +762,16 @@ function AcceptedOrderCard({ order, products, sites, onAddBatch, onStartBatch, o
                       >
                         Mark Complete
                       </button>
+                    )}
+                    {batch.dispatchedAt && (
+                      <a
+                        href={`/api/batches/${batch.id}/challan`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-xs font-medium"
+                      >
+                        Download Challan
+                      </a>
                     )}
                   </div>
                 </div>

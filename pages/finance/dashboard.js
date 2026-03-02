@@ -77,6 +77,20 @@ export default function FinanceDashboard() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
           <StatCard
+            label="Overdue Invoices"
+            value={stats.overdueCount ?? 0}
+            icon={<ClockIcon className="w-6 h-6" />}
+            highlight={(stats.overdueCount ?? 0) > 0}
+            accentColor="text-red-600"
+          />
+          <StatCard
+            label="Due in 7 Days"
+            value={stats.dueIn7Count ?? 0}
+            icon={<ClockIcon className="w-6 h-6" />}
+            highlight={(stats.dueIn7Count ?? 0) > 0}
+            accentColor="text-amber-600"
+          />
+          <StatCard
             label="Pending Payments"
             value={stats.pendingPayments}
             icon={<ClockIcon className="w-6 h-6" />}
@@ -178,7 +192,19 @@ export default function FinanceDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <ActionCard
+            title="Receivables & Aging"
+            description="Overdue and due-in-7-days"
+            href="/finance/receivables"
+            icon={<ClockIcon className="w-6 h-6" />}
+          />
+          <ActionCard
+            title="Sales Reports"
+            description="Reports and order export"
+            href="/finance/reports"
+            icon={<DocumentIcon className="w-6 h-6" />}
+          />
           <ActionCard
             title="Review Payments"
             description="Approve or reject payment proofs"

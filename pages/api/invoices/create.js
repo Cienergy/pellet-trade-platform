@@ -6,18 +6,10 @@ import { calculateGST } from "../../../lib/gst";
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { batchId, gstRate = 12, paymentTerm = "NET_30" } = req.body;
+  const { batchId, gstRate = 12, paymentTerm: bodyPaymentTerm } = req.body;
 
   if (!batchId) {
     return res.status(400).json({ error: "batchId is required" });
-  }
-
-  // Enforce payment terms: NET_30, NET_60, or NET_90 only
-  const validPaymentTerms = ["NET_30", "NET_60", "NET_90"];
-  if (!validPaymentTerms.includes(paymentTerm)) {
-    return res.status(400).json({ 
-      error: `Invalid payment term. Must be one of: ${validPaymentTerms.join(", ")}` 
-    });
   }
 
   const batch = await prisma.orderBatch.findUnique({
@@ -39,6 +31,18 @@ async function handler(req, res) {
 
   if (!batch.order?.org) {
     return res.status(404).json({ error: "Order organization not found" });
+  }
+
+  // Use buyer default payment term if not provided; enforce NET_30, NET_60, NET_90 only
+  const validPaymentTerms = ["NET_30", "NET_60", "NET_90"];
+  const orgDefault = batch.order.org.defaultPaymentTerm;
+  const paymentTerm = validPaymentTerms.includes(bodyPaymentTerm)
+    ? bodyPaymentTerm
+    : (orgDefault && validPaymentTerms.includes(orgDefault) ? orgDefault : "NET_30");
+  if (!validPaymentTerms.includes(paymentTerm)) {
+    return res.status(400).json({
+      error: `Invalid payment term. Must be one of: ${validPaymentTerms.join(", ")}`,
+    });
   }
 
   // Check if invoice already exists
@@ -85,6 +89,14 @@ async function handler(req, res) {
   await prisma.orderBatch.update({
     where: { id: batch.id },
     data: { status: "INVOICED" },
+  });
+
+  const { logAudit } = await import("../../../lib/audit");
+  await logAudit({
+    actorId: req.session?.userId,
+    entity: "invoice",
+    entityId: invoice.id,
+    action: "created",
   });
 
   return res.status(201).json(invoice);

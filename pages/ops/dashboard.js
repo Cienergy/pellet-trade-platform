@@ -149,12 +149,18 @@ export default function OpsDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <ActionCard
             title="Manage Orders"
             description="View and batch orders"
             href="/ops/orders"
             icon={<ClipboardIcon className="w-6 h-6" />}
+          />
+          <ActionCard
+            title="Dispatch Timelines"
+            description="Delivery performance and batch events"
+            href="/ops/dispatch-timeline"
+            icon={<ClockIcon className="w-6 h-6" />}
           />
           <ActionCard
             title="Update Inventory"

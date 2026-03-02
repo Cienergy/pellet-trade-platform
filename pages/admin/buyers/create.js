@@ -1,20 +1,20 @@
-import { prisma } from "../../../../lib/prisma";
-import { requireAuth } from "../../../../lib/requireAuth";
-import { requireRole } from "../../../../lib/requireRole";
+import { useEffect } from "react";
+import { useRouter } from "next/router";
 
-async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+/**
+ * Create buyer flow lives on /admin/buyers (inline form).
+ * This route redirects there.
+ */
+export default function AdminBuyersCreatePage() {
+  const router = useRouter();
 
-  const { name, gst, state } = req.body;
-  if (!name || !state) {
-    return res.status(400).json({ error: "Name and state required" });
-  }
+  useEffect(() => {
+    router.replace("/admin/buyers");
+  }, [router]);
 
-  const buyer = await prisma.organization.create({
-    data: { name, gst, state },
-  });
-
-  return res.status(201).json(buyer);
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-500">Redirecting to Buyers...</p>
+    </div>
+  );
 }
-
-export default requireAuth(requireRole("ADMIN", handler));

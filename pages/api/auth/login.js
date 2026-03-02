@@ -1,6 +1,7 @@
 import prisma from "../../../lib/prisma";
 import bcrypt from "bcryptjs";
 import { createSession } from "../../../lib/session";
+import { logAudit } from "../../../lib/audit";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -30,6 +31,13 @@ export default async function handler(req, res) {
     userId: user.id,
     role: user.role,
     orgId: user.orgId,
+  });
+
+  await logAudit({
+    actorId: user.id,
+    entity: "user",
+    entityId: user.id,
+    action: "login",
   });
 
   res.status(200).json({

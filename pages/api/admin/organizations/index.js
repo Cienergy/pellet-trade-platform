@@ -1,20 +1,18 @@
-import { prisma } from "../../../../lib/prisma";
+import prisma from "../../../../lib/prisma";
+import requireAuth from "../../../../lib/requireAuth";
+import requireRole from "../../../../lib/requireRole";
+import { logAudit } from "../../../../lib/audit";
 
-export default async function handler(req, res) {
-  // TODO: replace with real auth check
-  const isAdmin = true;
-  if (!isAdmin) {
-    return res.status(403).json({ error: "Admin only" });
-  }
-
+async function handler(req, res) {
   if (req.method === "GET") {
     const orgs = await prisma.organization.findMany({
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     });
     return res.status(200).json(orgs);
   }
 
   if (req.method === "POST") {
+    const session = req.session;
     const { name, gst, state } = req.body;
 
     if (!name || !state) {
@@ -22,15 +20,14 @@ export default async function handler(req, res) {
     }
 
     const org = await prisma.organization.create({
-      data: { name, gst, state }
+      data: { name, gst, state },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: "Organization",
-        entityId: org.id,
-        action: "CREATED"
-      }
+    await logAudit({
+      actorId: session?.userId,
+      entity: "organization",
+      entityId: org.id,
+      action: "created",
     });
 
     return res.status(201).json(org);
@@ -38,3 +35,5 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: "Method not allowed" });
 }
+
+export default requireAuth(requireRole("ADMIN", handler));

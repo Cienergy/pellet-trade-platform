@@ -1,6 +1,7 @@
 import prisma from "../../../lib/prisma";
 import requireAuth from "../../../lib/requireAuth";
 import requireRole from "../../../lib/requireRole";
+import { logAudit } from "../../../lib/audit";
 
 async function handler(req, res) {
   const session = req.session;
@@ -53,6 +54,13 @@ async function handler(req, res) {
         org: true,
         product: true,
       },
+    });
+
+    await logAudit({
+      actorId: session?.userId,
+      entity: "contract",
+      entityId: contract.id,
+      action: "created",
     });
 
     return res.status(201).json(contract);

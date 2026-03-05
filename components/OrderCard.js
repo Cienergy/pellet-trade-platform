@@ -4,7 +4,14 @@ import { showToast } from "./Toast";
 import { formatIST, formatISTDate } from "../lib/dateUtils";
 
 export default function OrderCard({ order }) {
-  const [expanded, setExpanded] = useState(false);
+  // Auto-expand if there are pending payments
+  const hasPendingPayments = order.batches?.some(b => {
+    if (!b.invoice) return false;
+    const paidAmount = b.invoice.payments?.filter(p => p.verified).reduce((sum, p) => sum + p.amount, 0) || 0;
+    return paidAmount < (b.invoice.totalAmount || b.invoice.total || 0);
+  });
+  
+  const [expanded, setExpanded] = useState(hasPendingPayments || false);
 
   const requestedMT = order.requestedQuantityMT || order.totalMT || order.batches?.reduce((sum, b) => sum + (b.quantityMT || 0), 0) || 0;
   const batchedMT = order.batchedMT || order.batches?.reduce((sum, b) => sum + (b.quantityMT || 0), 0) || 0;
@@ -186,15 +193,14 @@ export default function OrderCard({ order }) {
               </div>
             </div>
 
-            {/* Total Amount to be Paid (invoice total incl. GST) */}
+            {/* Total Amount to be Paid (Full PO Amount) */}
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-100">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-medium text-gray-700">Total Amount to be Paid (incl. GST)</span>
+                <span className="text-sm font-medium text-gray-700">Total Amount to be Paid</span>
                 <span className="text-2xl font-bold text-indigo-700">
                   ₹{fullPOAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </span>
               </div>
-              <p className="text-xs text-gray-500">Invoice totals include GST. Order value (ex GST) is shown on each batch.</p>
             </div>
 
             {/* Invoice Progress (Amount Raised/Invoiced) */}
@@ -211,7 +217,7 @@ export default function OrderCard({ order }) {
                   ></div>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Invoiced (incl. GST): ₹{invoicedAmount.toLocaleString("en-IN")}</span>
+                  <span>Invoiced: ₹{invoicedAmount.toLocaleString("en-IN")}</span>
                   <span>Remaining: ₹{(fullPOAmount - invoicedAmount).toLocaleString("en-IN")}</span>
                 </div>
               </div>
@@ -236,6 +242,33 @@ export default function OrderCard({ order }) {
                 </div>
               </div>
             )}
+
+            {/* Pending Payments Alert */}
+            {pendingAmount > 0 && order.status !== "REJECTED" && (
+              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-yellow-700 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="font-semibold text-yellow-900 mb-1">Payment Required</div>
+                    <div className="text-sm text-yellow-800 mb-2">
+                      You have <span className="font-bold">₹{pendingAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span> pending payment across {order.batches?.filter(b => {
+                        if (!b.invoice) return false;
+                        const paid = b.invoice.payments?.filter(p => p.verified).reduce((sum, p) => sum + p.amount, 0) || 0;
+                        return paid < (b.invoice.totalAmount || b.invoice.total || 0);
+                      }).length || 0} invoice(s).
+                    </div>
+                    <button
+                      onClick={() => setExpanded(true)}
+                      className="text-sm font-medium bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition"
+                    >
+                      View & Pay Invoices →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -243,12 +276,20 @@ export default function OrderCard({ order }) {
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="text-sm text-gray-600">
             <span className="font-medium text-gray-900">{order.batches?.length || 0}</span> batches
+            {hasPendingPayments && (
+              <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                Payment Pending
+              </span>
+            )}
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-sm font-medium text-white hover:text-gray-100 flex items-center gap-1 transition bg-gray-600 hover:bg-gray-700 px-3 py-1.5 rounded-lg"
           >
             {expanded ? "Hide" : "View"} Details
+            {hasPendingPayments && !expanded && (
+              <span className="ml-1 w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+            )}
             <svg
               className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`}
               fill="none"
@@ -263,10 +304,113 @@ export default function OrderCard({ order }) {
 
       {/* Expanded Batches */}
       {expanded && order.batches && order.batches.length > 0 && (
-        <div className="px-6 pb-6 space-y-3 border-t border-gray-100 bg-gray-50/50">
-          {order.batches.map((batch, idx) => (
-            <BatchCard key={batch.id} batch={batch} index={idx} />
-          ))}
+        <div className="px-6 pb-6 space-y-4 border-t border-gray-100 bg-gray-50/50">
+          {/* Group batches by payment term */}
+          {(() => {
+            const batchesByPaymentTerm = order.batches.reduce((acc, batch) => {
+              if (!batch.invoice) {
+                // Batches without invoices go to "No Invoice" group
+                if (!acc['NO_INVOICE']) acc['NO_INVOICE'] = [];
+                acc['NO_INVOICE'].push(batch);
+                return acc;
+              }
+              
+              const term = batch.invoice.paymentTerm || 'NET_30';
+              if (!acc[term]) acc[term] = [];
+              acc[term].push(batch);
+              return acc;
+            }, {});
+
+            const paymentTermOrder = ['NET_30', 'NET_60', 'NET_90', 'NO_INVOICE'];
+            
+            return paymentTermOrder.map(term => {
+              const batches = batchesByPaymentTerm[term];
+              if (!batches || batches.length === 0) return null;
+
+              // Calculate summary for this payment term
+              const invoices = batches.filter(b => b.invoice).map(b => b.invoice);
+              const totalAmount = invoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+              const paidAmount = invoices.reduce((sum, inv) => {
+                const invPaid = inv.payments?.filter(p => p.verified).reduce((pSum, p) => pSum + p.amount, 0) || 0;
+                return sum + invPaid;
+              }, 0);
+              const pendingAmount = totalAmount - paidAmount;
+
+              // Calculate due dates
+              const paymentTermDays = { NET_30: 30, NET_60: 60, NET_90: 90 };
+              const dueDates = invoices.map(inv => {
+                const invDate = new Date(inv.createdAt);
+                const dueDate = new Date(invDate);
+                dueDate.setDate(dueDate.getDate() + (paymentTermDays[term] || 30));
+                return dueDate;
+              });
+              
+              const earliestDueDate = dueDates.length > 0 ? new Date(Math.min(...dueDates.map(d => d.getTime()))) : null;
+              const latestDueDate = dueDates.length > 0 ? new Date(Math.max(...dueDates.map(d => d.getTime()))) : null;
+              
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const earliestDueDateOnly = earliestDueDate ? new Date(earliestDueDate) : null;
+              if (earliestDueDateOnly) earliestDueDateOnly.setHours(0, 0, 0, 0);
+              const hasOverdue = earliestDueDateOnly && earliestDueDateOnly < today;
+              const daysUntilEarliest = earliestDueDateOnly ? Math.ceil((earliestDueDateOnly - today) / (1000 * 60 * 60 * 24)) : null;
+
+              if (term === 'NO_INVOICE') {
+                return (
+                  <div key={term} className="space-y-2">
+                    <div className="text-sm font-semibold text-gray-700">Batches Pending Invoice</div>
+                    {batches.map((batch, idx) => (
+                      <BatchCard key={batch.id} batch={batch} index={idx} />
+                    ))}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={term} className="space-y-2">
+                  <div className={`rounded-lg p-3 border ${hasOverdue ? 'bg-red-50 border-red-200' : daysUntilEarliest !== null && daysUntilEarliest <= 7 ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold text-sm" style={{ color: hasOverdue ? '#991b1b' : daysUntilEarliest !== null && daysUntilEarliest <= 7 ? '#92400e' : '#1e3a8a' }}>
+                        {term.replace("NET_", "Net ")} Invoices
+                      </div>
+                      <div className="text-xs font-medium text-gray-600">
+                        {batches.length} {batches.length === 1 ? 'batch' : 'batches'}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">Total Amount:</span>{" "}
+                        <span className="font-bold text-gray-900">₹{totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Paid:</span>{" "}
+                        <span className="font-bold text-green-600">₹{paidAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Pending:</span>{" "}
+                        <span className={`font-bold ${pendingAmount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          ₹{pendingAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      {earliestDueDate && (
+                        <div>
+                          <span className="text-gray-600">Due Date:</span>{" "}
+                          <span className={`font-bold ${hasOverdue ? 'text-red-700' : daysUntilEarliest !== null && daysUntilEarliest <= 7 ? 'text-yellow-700' : 'text-gray-900'}`}>
+                            {formatISTDate(earliestDueDate)}
+                            {hasOverdue && ` (Overdue by ${Math.abs(daysUntilEarliest)} ${Math.abs(daysUntilEarliest) === 1 ? 'day' : 'days'})`}
+                            {!hasOverdue && daysUntilEarliest !== null && daysUntilEarliest <= 7 && ` (${daysUntilEarliest} ${daysUntilEarliest === 1 ? 'day' : 'days'} remaining)`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {batches.map((batch, idx) => (
+                    <BatchCard key={batch.id} batch={batch} index={idx} />
+                  ))}
+                </div>
+              );
+            }).filter(Boolean);
+          })()}
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
+import LogoutButton from "./LogoutButton";
 
 export default function BuyerLayout({ children, title }) {
   const router = useRouter();
@@ -43,11 +44,9 @@ export default function BuyerLayout({ children, title }) {
                 })}
               </nav>
             </div>
-            <form method="POST" action="/api/auth/logout">
-              <button className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition text-sm font-medium">
-                Logout
-              </button>
-            </form>
+            <LogoutButton className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition text-sm font-medium">
+              Logout
+            </LogoutButton>
           </div>
         </div>
       </div>

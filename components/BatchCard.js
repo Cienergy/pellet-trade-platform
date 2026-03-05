@@ -43,8 +43,8 @@ export default function BatchCard({ batch, index = 0 }) {
     CREATED: { color: "from-gray-400 to-gray-500", label: "Created", icon: "○" },
     INVOICED: { color: "from-indigo-400 to-indigo-500", label: "Invoiced", icon: "📄" },
     PAYMENT_APPROVED: { color: "from-yellow-400 to-amber-500", label: "Paid – Awaiting Dispatch", icon: "✓" },
-    IN_PROGRESS: { color: "from-blue-400 to-blue-500", label: "In Progress", icon: "⚙" },
-    COMPLETED: { color: "from-green-400 to-emerald-500", label: "Completed", icon: "✓" },
+    IN_PROGRESS: { color: "from-blue-400 to-blue-500", label: "Dispatched – Awaiting Delivery", icon: "⚙" },
+    COMPLETED: { color: "from-green-400 to-emerald-500", label: "Delivered", icon: "✓" },
     PAID: { color: "from-green-400 to-emerald-500", label: "Paid", icon: "✓" },
   };
 
@@ -73,12 +73,20 @@ export default function BatchCard({ batch, index = 0 }) {
               <span className="font-semibold text-gray-900">{batch.quantityMT.toFixed(2)} MT</span>
             </div>
             {invoice && (
-              <div className="text-sm">
-                <span className="text-gray-500">Invoice Amount:</span>{" "}
-                <span className="font-semibold text-indigo-600">
-                  ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                </span>
-              </div>
+              <>
+                <div className="text-sm">
+                  <span className="text-gray-500">Order value (ex GST):</span>{" "}
+                  <span className="font-semibold text-gray-900">
+                    ₹{Number(invoice.subtotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-gray-500">Invoice total (incl. GST):</span>{" "}
+                  <span className="font-semibold text-indigo-600">
+                    ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              </>
             )}
             {batch.batchMargin != null && (
               <div className="text-sm">
@@ -139,12 +147,13 @@ export default function BatchCard({ batch, index = 0 }) {
             <span className="text-xs font-medium text-gray-700">Invoice #{invoice.number}</span>
             <span className="text-sm font-bold text-gray-900">
               ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              <span className="text-xs font-normal text-gray-500 ml-1">(incl. GST)</span>
             </span>
           </div>
 
           <div className="text-xs text-gray-500 space-y-1">
             <div>
-              Subtotal: ₹{invoice.subtotal.toLocaleString("en-IN")} · GST {invoice.gstRate}%: ₹{invoice.gstAmount.toLocaleString("en-IN")}
+              Order value (ex GST): ₹{invoice.subtotal.toLocaleString("en-IN")} · GST {invoice.gstRate}%: ₹{invoice.gstAmount.toLocaleString("en-IN")}
             </div>
             {(() => {
               const dueDate = calculateDueDate(invoice);

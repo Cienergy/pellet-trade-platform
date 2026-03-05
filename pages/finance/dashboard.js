@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { ClockIcon, CurrencyIcon, DocumentIcon, CheckCircleIcon, TrendingUpIcon, ArrowRightIcon } from "../../components/Icons";
+import LogoutButton from "../../components/LogoutButton";
 
 export default function FinanceDashboard() {
   const router = useRouter();
@@ -64,11 +65,9 @@ export default function FinanceDashboard() {
               <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
               <p className="text-gray-600 text-sm mt-1">Payment and invoice management</p>
             </div>
-            <form method="POST" action="/api/auth/logout">
-              <button className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
-                Logout
-              </button>
-            </form>
+            <LogoutButton className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
+              Logout
+            </LogoutButton>
           </div>
         </div>
       </div>

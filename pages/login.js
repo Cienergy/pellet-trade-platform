@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
 export default function Login() {
@@ -6,15 +6,21 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [slotDisplay, setSlotDisplay] = useState("1");
+  useEffect(() => {
+    setSlotDisplay(sessionStorage.getItem("sessionSlot") || "1");
+  }, [router.query.slot]);
 
   async function submit(e) {
     e.preventDefault();
     setError("");
 
+    const slot = typeof window !== "undefined" ? (sessionStorage.getItem("sessionSlot") || "1") : "1";
     const res = await fetch("/api/auth/login", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, slot: Number(slot) }),
     });
 
     if (!res.ok) {
@@ -64,6 +70,24 @@ export default function Login() {
           Login
         </button>
       </form>
+
+      <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-500">
+        <p className="font-medium text-gray-700 mb-2">Multi-session (demo)</p>
+        <p className="mb-2">This tab uses session slot: <strong>{slotDisplay}</strong>. Open another role in a new tab:</p>
+        <div className="flex flex-wrap gap-2">
+          {[2, 3, 4].map((s) => (
+            <a
+              key={s}
+              href={`/login?slot=${s}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#0b69a3] hover:underline"
+            >
+              Open slot {s} (new tab)
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

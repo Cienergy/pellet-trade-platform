@@ -8,11 +8,13 @@ export default async function handler(req, res) {
     return res.status(405).end();
   }
 
-  const { email, password } = req.body;
+  const { email, password, slot } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: "Missing credentials" });
   }
+
+  const sessionSlot = [1, 2, 3, 4].includes(Number(slot)) ? Number(slot) : 1;
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -27,11 +29,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  await createSession(res, {
-    userId: user.id,
-    role: user.role,
-    orgId: user.orgId,
-  });
+  await createSession(
+    res,
+    {
+      userId: user.id,
+      role: user.role,
+      orgId: user.orgId,
+    },
+    sessionSlot
+  );
 
   await logAudit({
     actorId: user.id,

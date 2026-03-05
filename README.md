@@ -106,10 +106,11 @@ DATABASE_URL="postgresql://user:password@localhost:5432/pellet_trade"
 Optional (for payment proof / dispatch image uploads):
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
+
+**Supabase Storage:** Create a bucket named **`dispatch-images`** in the Supabase dashboard (Storage → New bucket). Set it to **Public** so "View image" on the dispatch timeline works. If you use payment proof uploads, create a **`payment-proof`** bucket and set it public (or configure RLS as needed). Without these buckets, uploads may succeed but opening the image link can return "Bucket not found".
 
 ### 3. Database
 

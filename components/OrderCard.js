@@ -186,14 +186,15 @@ export default function OrderCard({ order }) {
               </div>
             </div>
 
-            {/* Total Amount to be Paid (Full PO Amount) */}
+            {/* Total Amount to be Paid (invoice total incl. GST) */}
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-100">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-medium text-gray-700">Total Amount to be Paid</span>
+                <span className="text-sm font-medium text-gray-700">Total Amount to be Paid (incl. GST)</span>
                 <span className="text-2xl font-bold text-indigo-700">
                   ₹{fullPOAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </span>
               </div>
+              <p className="text-xs text-gray-500">Invoice totals include GST. Order value (ex GST) is shown on each batch.</p>
             </div>
 
             {/* Invoice Progress (Amount Raised/Invoiced) */}
@@ -210,7 +211,7 @@ export default function OrderCard({ order }) {
                   ></div>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Invoiced: ₹{invoicedAmount.toLocaleString("en-IN")}</span>
+                  <span>Invoiced (incl. GST): ₹{invoicedAmount.toLocaleString("en-IN")}</span>
                   <span>Remaining: ₹{(fullPOAmount - invoicedAmount).toLocaleString("en-IN")}</span>
                 </div>
               </div>

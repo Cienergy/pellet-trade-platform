@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
 import { UsersIcon, PackageIcon, FactoryIcon, ChartIcon, ClipboardIcon, ArrowRightIcon, TrendingUpIcon } from "../../components/Icons";
+import LogoutButton from "../../components/LogoutButton";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -63,11 +64,9 @@ export default function AdminDashboard() {
               <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
               <p className="text-gray-600 text-sm mt-1">System overview and management</p>
             </div>
-            <form method="POST" action="/api/auth/logout">
-              <button className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
-                Logout
-              </button>
-            </form>
+            <LogoutButton className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
+              Logout
+            </LogoutButton>
           </div>
         </div>
       </div>
@@ -266,6 +265,12 @@ export default function AdminDashboard() {
             title="Manage Users"
             description="Create and manage user accounts"
             href="/admin/users"
+            icon={<UsersIcon className="w-6 h-6" />}
+          />
+          <ActionCard
+            title="Manage Buyers"
+            description="Buyer orgs, payment terms, credit limit"
+            href="/admin/buyers"
             icon={<UsersIcon className="w-6 h-6" />}
           />
           <ActionCard

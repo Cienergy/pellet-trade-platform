@@ -217,6 +217,18 @@ export default function FinanceDashboard() {
             href="/finance/invoices"
             icon={<DocumentIcon className="w-6 h-6" />}
           />
+          <ActionCard
+            title="Tax & Compliance"
+            description="GSTR-1, GSTR-3B, IRN reference"
+            href="/finance/compliance"
+            icon={<DocumentIcon className="w-6 h-6" />}
+          />
+          <ActionCard
+            title="Credit Notes & Refunds"
+            description="Issue credit notes, process refunds"
+            href="/finance/credit-notes"
+            icon={<CurrencyIcon className="w-6 h-6" />}
+          />
         </div>
       </div>
     </div>

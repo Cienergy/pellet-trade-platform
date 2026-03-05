@@ -56,6 +56,9 @@ async function handler(req, res) {
   doc.moveDown(0.4);
   doc.fontSize(10).font("Helvetica").fillColor("#4b5563").text(`Invoice ID: ${invoice.id}`);
   doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString("en-IN")}`);
+  if (invoice.irn) {
+    doc.text(`IRN (E-invoice): ${invoice.irn}${invoice.irnDate ? ` · ${new Date(invoice.irnDate).toLocaleDateString("en-IN")}` : ""}`);
+  }
   doc.fillColor("#111827");
 
   doc.moveDown(1);

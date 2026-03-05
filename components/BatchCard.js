@@ -6,6 +6,7 @@ function calculateDueDate(invoice) {
   if (!invoice || !invoice.createdAt) return null;
   
   const paymentTermDays = {
+    NET_15: 15,
     NET_30: 30,
     NET_60: 60,
     NET_90: 90,
@@ -41,7 +42,7 @@ export default function BatchCard({ batch, index = 0 }) {
   const statusConfig = {
     CREATED: { color: "from-gray-400 to-gray-500", label: "Created", icon: "○" },
     INVOICED: { color: "from-indigo-400 to-indigo-500", label: "Invoiced", icon: "📄" },
-    PAYMENT_APPROVED: { color: "from-yellow-400 to-amber-500", label: "Payment Approved", icon: "✓" },
+    PAYMENT_APPROVED: { color: "from-yellow-400 to-amber-500", label: "Paid – Awaiting Dispatch", icon: "✓" },
     IN_PROGRESS: { color: "from-blue-400 to-blue-500", label: "In Progress", icon: "⚙" },
     COMPLETED: { color: "from-green-400 to-emerald-500", label: "Completed", icon: "✓" },
     PAID: { color: "from-green-400 to-emerald-500", label: "Paid", icon: "✓" },
@@ -203,7 +204,7 @@ export default function BatchCard({ batch, index = 0 }) {
                       Verified
                     </span>
                   ) : (
-                    <span className="text-yellow-600 font-medium">Pending</span>
+                    <span className="text-yellow-600 font-medium">Payment under verification</span>
                   )}
                 </div>
               ))}

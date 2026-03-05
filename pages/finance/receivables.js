@@ -4,6 +4,35 @@ import Link from "next/link";
 import { ClockIcon, CurrencyIcon, DocumentIcon, ArrowRightIcon } from "../../components/Icons";
 import { formatISTDate } from "../../lib/dateUtils";
 
+function SendReminderButton({ invoiceId }) {
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  async function send() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/finance/dunning-reminder", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      if (res.ok) setSent(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={send}
+      disabled={loading || sent}
+      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50"
+    >
+      {sent ? "Sent" : loading ? "Sending..." : "Send reminder"}
+    </button>
+  );
+}
+
 export default function FinanceReceivables() {
   const router = useRouter();
   const [data, setData] = useState(null);
@@ -108,6 +137,7 @@ export default function FinanceReceivables() {
                     <th className="p-3 border-b">Due Date</th>
                     <th className="p-3 border-b">Outstanding</th>
                     <th className="p-3 border-b">Days Overdue</th>
+                    <th className="p-3 border-b">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,6 +152,9 @@ export default function FinanceReceivables() {
                       <td className="p-3">{formatISTDate(row.dueDate)}</td>
                       <td className="p-3 font-medium">₹{row.outstanding.toLocaleString("en-IN")}</td>
                       <td className="p-3 text-red-600">{row.daysOverdue}</td>
+                      <td className="p-3">
+                        <SendReminderButton invoiceId={row.invoiceId} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

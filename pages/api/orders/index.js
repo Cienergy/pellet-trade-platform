@@ -1,6 +1,7 @@
 import requireAuth from "../../../lib/requireAuth";
 import prisma from "../../../lib/prisma";
 import { logAudit } from "../../../lib/audit";
+import { canOrgPlaceNewOrder } from "../../../lib/creditCheck";
 
 async function handler(req, res) {
   const session = req.session;
@@ -16,6 +17,12 @@ async function handler(req, res) {
       return res.status(400).json({
         error: "productId, quantityMT, and deliveryLocation are required",
       });
+    }
+
+    // Credit / overdue check: block if org has overdue (when flag set) or exceeds credit limit
+    const creditCheck = await canOrgPlaceNewOrder(prisma, session.orgId);
+    if (!creditCheck.allowed) {
+      return res.status(403).json({ error: creditCheck.reason });
     }
 
     // Create order with requested quantity (NO batches created - Ops will create batches)

@@ -39,6 +39,7 @@ enum BatchStatus {
 }
 
 enum PaymentTerm {
+  NET_15
   NET_30
   NET_60
   NET_90
@@ -57,8 +58,9 @@ model Organization {
   state               String
   buyerMargin         Float?       // Buyer-level margin data placeholder
   defaultPaymentTerm  PaymentTerm? // Default NET_30/NET_60/NET_90 for this buyer
-  creditLimit         Float?       // Optional credit limit placeholder (for future policy)
-  createdAt          DateTime     @default(now())
+  creditLimit              Float?    // Credit limit; new orders may be blocked if overdue exceeds this
+  blockNewOrdersIfOverdue  Boolean   @default(false) // When true, block new orders if org has overdue invoices
+  createdAt                DateTime  @default(now())
 
   users    User[]
   orders   Order[]
@@ -232,26 +234,56 @@ model Invoice {
   sgst        Float?   // SGST amount (for intra-state, immutable)
   igst        Float?   // IGST amount (for inter-state, immutable)
   totalAmount Float
-  paymentTerm PaymentTerm // NET_30, NET_60, or NET_90
+  paymentTerm PaymentTerm // NET_15, NET_30, NET_60, or NET_90
   status      String
   erpStatus   String   @default("PENDING")
   syncedToERP Boolean  @default(false)
+  irn         String?  // E-invoice IRN (Invoice Reference Number) placeholder
+  irnDate     DateTime? // IRN generation date
   createdAt   DateTime @default(now())
 
-  batch    OrderBatch @relation(fields: [batchId], references: [id])
-  payments Payment[]
+  batch       OrderBatch @relation(fields: [batchId], references: [id])
+  payments    Payment[]
+  creditNotes CreditNote[]
 }
 
 model Payment {
-  id        String   @id @default(uuid())
-  invoiceId String
-  amount    Float
-  mode      String
-  proofUrl  String?
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  invoiceId  String
+  amount     Float
+  mode       String
+  proofUrl   String?
+  verified   Boolean   @default(false)
+  verifiedAt DateTime? // When finance verified (for SLA)
+  createdAt  DateTime  @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model CreditNote {
+  id        String   @id @default(uuid())
+  invoiceId String
+  number    String   // e.g. CN-202503-001
+  amount    Float
+  reason    String?  // Return, cancellation, adjustment
+  status    String   // DRAFT, ISSUED, CANCELLED
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id])
+  refunds  Refund[]
+}
+
+model Refund {
+  id           String    @id @default(uuid())
+  creditNoteId String
+  amount       Float
+  status       String    // PENDING, PROCESSED, FAILED
+  processedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  createdBy    String?
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id])
 }
 
 /**

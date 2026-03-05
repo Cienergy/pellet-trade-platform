@@ -7,7 +7,7 @@ export default function AdminBuyers() {
   const [state, setState] = useState("");
   const [msg, setMsg] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ buyerMargin: "", defaultPaymentTerm: "", creditLimit: "" });
+  const [editForm, setEditForm] = useState({ buyerMargin: "", defaultPaymentTerm: "", creditLimit: "", blockNewOrdersIfOverdue: false });
 
   async function loadBuyers() {
     const res = await fetch("/api/admin/buyers", {
@@ -49,6 +49,7 @@ export default function AdminBuyers() {
       buyerMargin: b.buyerMargin != null ? String(b.buyerMargin) : "",
       defaultPaymentTerm: b.defaultPaymentTerm || "",
       creditLimit: b.creditLimit != null ? String(b.creditLimit) : "",
+      blockNewOrdersIfOverdue: !!b.blockNewOrdersIfOverdue,
     });
   }
 
@@ -62,6 +63,7 @@ export default function AdminBuyers() {
         buyerMargin: editForm.buyerMargin === "" ? null : parseFloat(editForm.buyerMargin),
         defaultPaymentTerm: editForm.defaultPaymentTerm || null,
         creditLimit: editForm.creditLimit === "" ? null : parseFloat(editForm.creditLimit),
+        blockNewOrdersIfOverdue: editForm.blockNewOrdersIfOverdue,
       }),
     });
     if (res.ok) {
@@ -115,6 +117,7 @@ export default function AdminBuyers() {
             <th className="p-2 border">Buyer Margin</th>
             <th className="p-2 border">Default Payment</th>
             <th className="p-2 border">Credit Limit</th>
+            <th className="p-2 border">Block if Overdue</th>
             <th className="p-2 border">Created</th>
             <th className="p-2 border">Actions</th>
           </tr>
@@ -144,6 +147,7 @@ export default function AdminBuyers() {
                       onChange={(e) => setEditForm((f) => ({ ...f, defaultPaymentTerm: e.target.value }))}
                     >
                       <option value="">—</option>
+                      <option value="NET_15">Net 15</option>
                       <option value="NET_30">Net 30</option>
                       <option value="NET_60">Net 60</option>
                       <option value="NET_90">Net 90</option>
@@ -159,6 +163,16 @@ export default function AdminBuyers() {
                       onChange={(e) => setEditForm((f) => ({ ...f, creditLimit: e.target.value }))}
                     />
                   </td>
+                  <td className="p-2 border">
+                    <label className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={editForm.blockNewOrdersIfOverdue}
+                        onChange={(e) => setEditForm((f) => ({ ...f, blockNewOrdersIfOverdue: e.target.checked }))}
+                      />
+                      Block
+                    </label>
+                  </td>
                   <td className="p-2 border">{new Date(b.createdAt).toLocaleString()}</td>
                   <td className="p-2 border">
                     <button onClick={saveEdit} className="text-blue-600 text-sm mr-1">Save</button>
@@ -170,6 +184,7 @@ export default function AdminBuyers() {
                   <td className="p-2 border">{b.buyerMargin != null ? `₹${Number(b.buyerMargin).toLocaleString("en-IN")}` : "—"}</td>
                   <td className="p-2 border">{b.defaultPaymentTerm ? b.defaultPaymentTerm.replace("NET_", "Net ") : "—"}</td>
                   <td className="p-2 border">{b.creditLimit != null ? `₹${Number(b.creditLimit).toLocaleString("en-IN")}` : "—"}</td>
+                  <td className="p-2 border">{b.blockNewOrdersIfOverdue ? "Yes" : "No"}</td>
                   <td className="p-2 border">{new Date(b.createdAt).toLocaleString()}</td>
                   <td className="p-2 border">
                     <button onClick={() => startEdit(b)} className="text-blue-600 text-sm">Edit</button>

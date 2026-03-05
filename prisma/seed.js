@@ -73,6 +73,11 @@ async function main() {
     "Gujarat"
   );
 
+  const buyerOrg2 = await getOrCreateOrganization(
+    "Acme Pellets Ltd",
+    "Karnataka"
+  );
+
   // USERS
   const admin = await getOrCreateUser({
     email: "admin@cienergy.in",
@@ -104,6 +109,14 @@ async function main() {
     role: "BUYER",
     passwordHash,
     orgId: buyerOrg.id,
+  });
+
+  const buyer2 = await getOrCreateUser({
+    email: "buyer2@acme.in",
+    name: "Acme Buyer",
+    role: "BUYER",
+    passwordHash,
+    orgId: buyerOrg2.id,
   });
 
   // SITES
@@ -170,53 +183,91 @@ async function main() {
   await upsertInventory(gradeB.id, siteA.id, 60);
   await upsertInventory(gradeB.id, siteB.id, 0);
 
-  // ORDER (BUYER DEMO)
-  const existingOrder = await prisma.order.findFirst({
-    where: { orgId: buyerOrg.id },
+  // Update orgs with margin/terms for dashboard
+  await prisma.organization.updateMany({
+    where: { id: buyerOrg.id },
+    data: { defaultPaymentTerm: "NET_30", buyerMargin: 50000 },
+  });
+  await prisma.organization.updateMany({
+    where: { id: buyerOrg2.id },
+    data: { defaultPaymentTerm: "NET_60", buyerMargin: 75000 },
   });
 
-  if (!existingOrder) {
-    const order = await prisma.order.create({
-      data: {
-        orgId: buyerOrg.id,
-        status: "IN_PROGRESS",
-        createdBy: buyer.id,
-      },
-    });
+  // Helper to create order + batch + invoice + optional payment (idempotent by order count)
+  const orderCount = await prisma.order.count();
+  if (orderCount < 5) {
+    const ordersToCreate = 5 - orderCount;
+    const orgs = [buyerOrg, buyerOrg2];
+    const products = [gradeA, gradeB];
+    const sites = [siteA, siteB];
+    const statuses = ["ACCEPTED", "IN_PROGRESS", "IN_PROGRESS", "COMPLETED", "COMPLETED"];
+    const batchStatuses = ["INVOICED", "INVOICED", "IN_PROGRESS", "COMPLETED", "COMPLETED"];
 
-    const batch = await prisma.orderBatch.create({
-      data: {
-        orderId: order.id,
-        productId: gradeA.id,
-        siteId: siteA.id,
-        quantityMT: 50,
-        status: "INVOICED",
-        createdBy: ops.id,
-      },
-    });
+    for (let i = 0; i < ordersToCreate; i++) {
+      const org = orgs[i % orgs.length];
+      const product = products[i % products.length];
+      const site = sites[i % sites.length];
+      const creator = org.id === buyerOrg.id ? buyer : buyer2;
+      const order = await prisma.order.create({
+        data: {
+          orgId: org.id,
+          status: statuses[i],
+          requestedQuantityMT: 100 + i * 25,
+          deliveryLocation: `Warehouse ${i + 1}`,
+          createdBy: creator.id,
+        },
+      });
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        batchId: batch.id,
-        number: "INV-DEMO-001",
-        subtotal: 410000,
-        gstType: "CGST_SGST",
-        gstRate: 18,
-        gstAmount: 73800,
-        totalAmount: 483800,
-        status: "PENDING",
-        erpStatus: "POSTED",
-      },
-    });
+      const qty = 30 + i * 10;
+      const subtotal = qty * product.pricePMT;
+      const gstAmt = Math.round(subtotal * 0.18);
+      const total = subtotal + gstAmt;
+      const batch = await prisma.orderBatch.create({
+        data: {
+          orderId: order.id,
+          productId: product.id,
+          siteId: site.id,
+          quantityMT: qty,
+          status: batchStatuses[i],
+          deliveryAt: new Date(Date.now() + (i + 1) * 7 * 24 * 60 * 60 * 1000),
+          leftFromSiteAt: i >= 2 ? new Date(Date.now() - i * 2 * 24 * 60 * 60 * 1000) : null,
+          dispatchedAt: i >= 3 ? new Date(Date.now() - (i - 2) * 24 * 60 * 60 * 1000) : null,
+          createdBy: ops.id,
+        },
+      });
 
-    await prisma.payment.create({
-      data: {
-        invoiceId: invoice.id,
-        amount: 100000,
-        mode: "BANK_TRANSFER",
-        verified: false,
-      },
-    });
+      const invNum = `INV-DEMO-${String(1000 + orderCount + i).padStart(4, "0")}`;
+      const paymentTerm = i % 3 === 0 ? "NET_30" : i % 3 === 1 ? "NET_60" : "NET_90";
+      const invoice = await prisma.invoice.create({
+        data: {
+          batchId: batch.id,
+          number: invNum,
+          subtotal,
+          gstType: "CGST_SGST",
+          gstRate: 18,
+          gstAmount: gstAmt,
+          cgst: gstAmt / 2,
+          sgst: gstAmt / 2,
+          totalAmount: total,
+          paymentTerm,
+          status: "CREATED",
+          erpStatus: "PENDING",
+        },
+      });
+      // Add payment(s) for first two invoices so dashboard shows pending + verified
+      if (i === 0) {
+        await prisma.payment.create({
+          data: { invoiceId: invoice.id, amount: total * 0.5, mode: "NEFT", verified: true },
+        });
+        await prisma.payment.create({
+          data: { invoiceId: invoice.id, amount: total * 0.3, mode: "NEFT", verified: false },
+        });
+      } else if (i === 1) {
+        await prisma.payment.create({
+          data: { invoiceId: invoice.id, amount: total, mode: "NEFT", verified: true },
+        });
+      }
+    }
   }
 
   console.log("✅ Phase-1 demo data seeded successfully");

@@ -33,8 +33,8 @@ async function handler(req, res) {
     return res.status(404).json({ error: "Order organization not found" });
   }
 
-  // Use buyer default payment term if not provided; enforce NET_30, NET_60, NET_90 only
-  const validPaymentTerms = ["NET_30", "NET_60", "NET_90"];
+  // Use buyer default payment term if not provided; enforce NET_15, NET_30, NET_60, NET_90 only
+  const validPaymentTerms = ["NET_15", "NET_30", "NET_60", "NET_90"];
   const orgDefault = batch.order.org.defaultPaymentTerm;
   const paymentTerm = validPaymentTerms.includes(bodyPaymentTerm)
     ? bodyPaymentTerm

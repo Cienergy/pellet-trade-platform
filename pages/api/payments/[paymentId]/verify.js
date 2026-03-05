@@ -25,10 +25,13 @@ async function handler(req, res) {
     return res.status(404).json({ error: "Payment not found" });
   }
 
-  // Update payment verification status
+  // Update payment verification status; set verifiedAt for SLA tracking
   const updatedPayment = await prisma.payment.update({
     where: { id: paymentId },
-    data: { verified: approve !== false },
+    data: {
+      verified: approve !== false,
+      verifiedAt: approve !== false ? new Date() : null,
+    },
   });
 
   // If payment is approved, update batch status to PAYMENT_APPROVED

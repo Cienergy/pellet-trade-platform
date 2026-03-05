@@ -3,6 +3,7 @@ import requireAuth from "../../../../lib/requireAuth";
 import requireRole from "../../../../lib/requireRole";
 import { logAudit } from "../../../../lib/audit";
 import { calculateGST } from "../../../../lib/gst";
+import { canOrgPlaceNewOrder } from "../../../../lib/creditCheck";
 
 async function handler(req, res) {
   const { orderId } = req.query;
@@ -109,6 +110,12 @@ async function handler(req, res) {
         return res.status(404).json({ error: "Order or organization not found" });
       }
 
+      // Credit / overdue check: block new batch if buyer has overdue or exceeds credit limit
+      const creditCheck = await canOrgPlaceNewOrder(prisma, orderWithOrg.org.id);
+      if (!creditCheck.allowed) {
+        return res.status(403).json({ error: creditCheck.reason });
+      }
+
       // Create batch
       const batch = await prisma.orderBatch.create({
         data: {
@@ -137,8 +144,11 @@ async function handler(req, res) {
         gstRate: 12, // Default 12% GST, can be made configurable
       });
 
-      // Payment term - default to NET_30, can be made configurable per order/contract
-      const paymentTerm = "NET_30"; // Will be enforced to NET_30, NET_60, or NET_90 only
+      // Payment term from org default; enforce NET_15, NET_30, NET_60, NET_90 only
+      const validTerms = ["NET_15", "NET_30", "NET_60", "NET_90"];
+      const paymentTerm = (orderWithOrg.org.defaultPaymentTerm && validTerms.includes(orderWithOrg.org.defaultPaymentTerm))
+        ? orderWithOrg.org.defaultPaymentTerm
+        : "NET_30";
 
       // Generate invoice number
       const invoiceNumber = `INV-${new Date().toISOString().slice(0, 7).replace(/-/, "")}-${String(Date.now()).slice(-6)}`;

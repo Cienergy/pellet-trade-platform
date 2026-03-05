@@ -17,13 +17,14 @@ async function handler(req, res) {
   const allowed = {};
   if (body.buyerMargin !== undefined) allowed.buyerMargin = body.buyerMargin == null || body.buyerMargin === "" ? null : Number(body.buyerMargin);
   if (body.defaultPaymentTerm !== undefined) {
-    const valid = ["NET_30", "NET_60", "NET_90"];
+    const valid = ["NET_15", "NET_30", "NET_60", "NET_90"];
     allowed.defaultPaymentTerm = valid.includes(body.defaultPaymentTerm) ? body.defaultPaymentTerm : null;
   }
   if (body.creditLimit !== undefined) allowed.creditLimit = body.creditLimit == null || body.creditLimit === "" ? null : Number(body.creditLimit);
+  if (typeof body.blockNewOrdersIfOverdue === "boolean") allowed.blockNewOrdersIfOverdue = body.blockNewOrdersIfOverdue;
 
   if (Object.keys(allowed).length === 0) {
-    return res.status(400).json({ error: "No valid fields to update (buyerMargin, defaultPaymentTerm, creditLimit)" });
+    return res.status(400).json({ error: "No valid fields to update (buyerMargin, defaultPaymentTerm, creditLimit, blockNewOrdersIfOverdue)" });
   }
 
   try {

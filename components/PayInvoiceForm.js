@@ -37,6 +37,7 @@ export default function PayInvoiceForm({ invoiceId, invoice }) {
 
   // Calculate due date based on payment term
   const paymentTermDays = {
+    NET_15: 15,
     NET_30: 30,
     NET_60: 60,
     NET_90: 90,
@@ -177,7 +178,7 @@ export default function PayInvoiceForm({ invoiceId, invoice }) {
             <span className="font-bold">₹{remainingAmount.toFixed(2)}</span>
           </div>
           <div className="text-gray-700 mt-1 pt-1 border-t" style={{ borderColor: isOverdue ? '#fca5a5' : daysUntilDue <= 7 ? '#fde68a' : '#bfdbfe' }}>
-            You must pay exactly ₹{remainingAmount.toFixed(2)} (no more, no less)
+            You must pay exactly ₹{remainingAmount.toFixed(2)} (no more, no less). Upload payment proof within 48 hours.
           </div>
         </div>
       </div>

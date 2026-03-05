@@ -2,7 +2,7 @@ import prisma from "../../../lib/prisma";
 import requireAuth from "../../../lib/requireAuth";
 import requireRole from "../../../lib/requireRole";
 
-const PAYMENT_TERM_DAYS = { NET_30: 30, NET_60: 60, NET_90: 90 };
+const PAYMENT_TERM_DAYS = { NET_15: 15, NET_30: 30, NET_60: 60, NET_90: 90 };
 
 function getDueDate(invoice) {
   if (!invoice?.createdAt) return null;

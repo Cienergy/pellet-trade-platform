@@ -1,0 +1,9 @@
+-- Add missing OrderStatus values (migration 20260112083308 only had CREATED, IN_PROGRESS, COMPLETED)
+ALTER TYPE "OrderStatus" ADD VALUE 'PENDING_APPROVAL';
+ALTER TYPE "OrderStatus" ADD VALUE 'ACCEPTED';
+ALTER TYPE "OrderStatus" ADD VALUE 'REJECTED';
+
+-- Add missing BatchStatus values (migration had CREATED, INVOICED, PAID)
+ALTER TYPE "BatchStatus" ADD VALUE 'PAYMENT_APPROVED';
+ALTER TYPE "BatchStatus" ADD VALUE 'IN_PROGRESS';
+ALTER TYPE "BatchStatus" ADD VALUE 'COMPLETED';

@@ -7,6 +7,10 @@ export default async function handler(req, res) {
   const { paymentId } = req.query;
   const supabase = getSupabase();
 
+  if (!supabase) {
+    return res.status(503).json({ error: "Receipt service not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY." });
+  }
+
   const { data: payment, error } = await supabase
     .from("payments")
     .select(`

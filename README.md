@@ -170,11 +170,9 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 
 ---
 
-## Deployment (e.g. Vercel)
+## Deployment (Vercel)
 
-1. Set `DATABASE_URL` (and optional Supabase vars) in the project environment.
-2. Run migrations: `npx prisma migrate deploy`.
-3. Build: `npm run build`. The app uses `prisma generate` in postinstall.
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for full steps: env vars, migrations, seed, and **test logins** to share with testers. Summary: set `DATABASE_URL` (and optional Supabase vars) in Vercel, deploy, then run `npx prisma migrate deploy` and `npx prisma db seed` once with the production DB URL.
 
 ---
 

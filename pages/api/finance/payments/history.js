@@ -62,7 +62,7 @@ async function handler(req, res) {
           mode: payment.mode,
           verified: payment.verified,
           invoiceNumber: payment.invoice?.number,
-          organization: payment.invoice?.batch?.order?.org?.name,
+          organization: payment.invoice?.batch?.order?.org?.name || payment.invoice?.org?.name,
         } : null,
       };
     })

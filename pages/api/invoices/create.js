@@ -45,12 +45,10 @@ async function handler(req, res) {
     });
   }
 
-  // Check if invoice already exists
-  const existingInvoice = await prisma.invoice.findUnique({
+  const existing = await prisma.invoice.findFirst({
     where: { batchId: batch.id },
   });
-
-  if (existingInvoice) {
+  if (existing) {
     return res.status(400).json({ error: "Invoice already exists for this batch" });
   }
 
@@ -68,6 +66,7 @@ async function handler(req, res) {
   // Generate invoice number
   const invoiceNumber = `INV-${new Date().toISOString().slice(0, 7).replace(/-/, "")}-${String(Date.now()).slice(-6)}`;
 
+  const org = batch.order.org;
   const invoice = await prisma.invoice.create({
     data: {
       batchId: batch.id,
@@ -82,6 +81,13 @@ async function handler(req, res) {
       totalAmount: gstCalculation.totalAmount,
       paymentTerm: paymentTerm,
       status: "CREATED",
+      invoiceType: "STANDARD",
+      earlyPayDiscountPercent: org.earlyPayDiscountPercent ?? undefined,
+      earlyPayDiscountDays: org.earlyPayDiscountDays ?? undefined,
+      retentionPercent: org.retentionPercent ?? undefined,
+      retentionDueDate: org.retentionDays != null && batch.deliveryAt
+        ? (() => { const d = new Date(batch.deliveryAt); d.setDate(d.getDate() + org.retentionDays); return d; })()
+        : undefined,
     },
   });
 

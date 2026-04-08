@@ -23,7 +23,7 @@ async function handler(req, res) {
         },
         product: true,
         site: true,
-        invoice: true,
+        invoices: true,
       },
     });
 
@@ -42,7 +42,7 @@ async function handler(req, res) {
         },
         product: true,
         site: true,
-        invoice: true,
+        invoices: true,
       },
       orderBy: { createdAt: "asc" },
     });
@@ -55,7 +55,7 @@ async function handler(req, res) {
         },
         product: true,
         site: true,
-        invoice: true,
+        invoices: true,
       },
       orderBy: { createdAt: "desc" },
       take: 100, // Limit to recent batches
@@ -112,10 +112,11 @@ async function handler(req, res) {
       });
     }
 
-    if (batch.invoice?.createdAt) {
+    const firstInv = batch.invoices?.[0] || batch.invoice;
+    if (firstInv?.createdAt) {
       timeline.events.push({
         type: "INVOICED",
-        timestamp: batch.invoice.createdAt,
+        timestamp: firstInv.createdAt,
         label: "Invoice Generated",
       });
     }

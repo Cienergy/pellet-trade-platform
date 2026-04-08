@@ -56,7 +56,7 @@ export default function Login() {
           className="border p-2 w-full"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-        />
+        />34567890
 
         <input
           type="password"

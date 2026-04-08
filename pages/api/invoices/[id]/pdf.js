@@ -22,16 +22,16 @@ async function handler(req, res) {
           order: { include: { org: true } },
         },
       },
+      org: true,
       payments: true,
     },
   });
 
   if (!invoice) return res.status(404).json({ error: "Invoice not found" });
 
-  // IMPORTANT: Authorization — buyers can only download invoices for their org
   const session = req.session;
   if (session?.role === "BUYER") {
-    const orgId = invoice.batch?.order?.orgId;
+    const orgId = invoice.batch?.order?.orgId || invoice.orgId;
     if (!orgId || orgId !== session.orgId) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -65,10 +65,9 @@ async function handler(req, res) {
   doc.moveTo(48, doc.y).lineTo(547, doc.y).strokeColor("#e5e7eb").stroke();
   doc.moveDown(1);
 
-  // Buyer / Order info
-  const orgName = invoice.batch?.order?.org?.name || "-";
+  const orgName = invoice.batch?.order?.org?.name || invoice.org?.name || "-";
   const deliveryLocation = invoice.batch?.order?.deliveryLocation || "-";
-  const productName = invoice.batch?.product?.name || "-";
+  const productName = invoice.batch?.product?.name || (invoice.invoiceType === "SECURITY_DEPOSIT" ? "Security Deposit" : "-");
   const siteName = invoice.batch?.site?.name || "-";
   const qty = invoice.batch?.quantityMT ?? 0;
 
@@ -114,6 +113,12 @@ async function handler(req, res) {
     ? invoice.paymentTerm.replace("NET_", "Net ") 
     : "Net 30";
   doc.text(`Payment Terms: ${paymentTermLabel}`, { underline: true });
+  if (invoice.earlyPayDiscountPercent != null && invoice.earlyPayDiscountDays != null) {
+    doc.text(`Early payment: ${invoice.earlyPayDiscountPercent}% discount if paid within ${invoice.earlyPayDiscountDays} days.`, { continued: false });
+  }
+  if (invoice.retentionPercent != null && invoice.retentionDueDate) {
+    doc.text(`Retention: ${invoice.retentionPercent}% due by ${new Date(invoice.retentionDueDate).toLocaleDateString("en-IN")}.`, { continued: false });
+  }
 
   // Payments
   const verifiedPaid = (invoice.payments || [])

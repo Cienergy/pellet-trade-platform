@@ -55,6 +55,7 @@ async function handler(req, res) {
 
       await logAudit({
         actorId: session.userId,
+        req,
         entity: "orderBatch",
         entityId: batchId,
         action: "completed",

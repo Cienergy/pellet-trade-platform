@@ -45,6 +45,13 @@ enum PaymentTerm {
   NET_90
 }
 
+enum PaymentMode {
+  NET_TERMS
+  ADVANCE_BALANCE
+  PAY_BEFORE_DISPATCH
+  STANDARD
+}
+
 /**
  * =========================
  * CORE
@@ -57,14 +64,22 @@ model Organization {
   gst                 String?
   state               String
   buyerMargin         Float?       // Buyer-level margin data placeholder
-  defaultPaymentTerm  PaymentTerm? // Default NET_30/NET_60/NET_90 for this buyer
-  creditLimit              Float?    // Credit limit; new orders may be blocked if overdue exceeds this
-  blockNewOrdersIfOverdue  Boolean   @default(false) // When true, block new orders if org has overdue invoices
-  createdAt                DateTime  @default(now())
+  defaultPaymentTerm       PaymentTerm?  // Default Net 15/30/60/90 for this buyer
+  defaultPaymentMode       PaymentMode?  @default(NET_TERMS)
+  advancePercent           Float?        // For ADVANCE_BALANCE e.g. 20
+  earlyPayDiscountPercent  Float?
+  earlyPayDiscountDays     Int?
+  retentionPercent         Float?
+  retentionDays            Int?
+  securityDepositAmount    Float?
+  creditLimit              Float?
+  blockNewOrdersIfOverdue  Boolean      @default(false)
+  createdAt                DateTime      @default(now())
 
   users    User[]
   orders   Order[]
   contracts Contract[]
+  invoices Invoice[]
 }
 
 model User {
@@ -202,6 +217,13 @@ model OrderBatch {
   deliveryAt      DateTime?
   leftFromSiteAt  DateTime?   // When batch left the factory site
   dispatchedAt    DateTime?   // When material was dispatched for delivery
+  freightCost         Float?     // Manual freight cost for this batch (entered at/after dispatch)
+  freightCurrency     String?    @default("INR")
+  freightVendorName   String?
+  freightInvoiceRef   String?
+  freightNotes        String?
+  freightEnteredAt    DateTime?
+  freightEnteredBy    String?
   batchMargin     Float?      // Batch-level margin data placeholder
   eWayBillNumber  String?     // E-way bill number (optional, for GST compliance)
   eWayBillDate    DateTime?   // E-way bill date
@@ -213,7 +235,7 @@ model OrderBatch {
   site    Site    @relation(fields: [siteId], references: [id])
   creator User    @relation("BatchCreatedBy", fields: [createdBy], references: [id])
 
-  invoice Invoice?
+  invoices Invoice[]
 }
 
 /**
@@ -223,28 +245,40 @@ model OrderBatch {
  */
 
 model Invoice {
-  id          String   @id @default(uuid())
-  batchId     String   @unique
-  number      String
-  subtotal    Float
-  gstType     String   // IGST or CGST_SGST (immutable after generation)
-  gstRate     Float    // Immutable after generation
-  gstAmount   Float    // Immutable after generation
-  cgst        Float?   // CGST amount (for intra-state, immutable)
-  sgst        Float?   // SGST amount (for intra-state, immutable)
-  igst        Float?   // IGST amount (for inter-state, immutable)
-  totalAmount Float
-  paymentTerm PaymentTerm // NET_15, NET_30, NET_60, or NET_90
-  status      String
-  erpStatus   String   @default("PENDING")
-  syncedToERP Boolean  @default(false)
-  irn         String?  // E-invoice IRN (Invoice Reference Number) placeholder
-  irnDate     DateTime? // IRN generation date
-  createdAt   DateTime @default(now())
+  id                       String       @id @default(uuid())
+  batchId                  String?      // Null for SECURITY_DEPOSIT
+  orgId                    String?      // For SECURITY_DEPOSIT
+  number                   String
+  subtotal                 Float
+  gstType                  String
+  gstRate                  Float
+  gstAmount                Float
+  cgst                     Float?
+  sgst                     Float?
+  igst                     Float?
+  totalAmount              Float
+  paymentTerm              PaymentTerm
+  status                   String
+  erpStatus                String       @default("PENDING")
+  syncedToERP              Boolean      @default(false)
+  irn                      String?
+  irnDate                  DateTime?
+  invoiceType              String       @default("STANDARD") // STANDARD | ADVANCE | BALANCE | SECURITY_DEPOSIT
+  parentInvoiceId          String?
+  advancePercent           Float?
+  dueDateOverride          DateTime?
+  earlyPayDiscountPercent  Float?
+  earlyPayDiscountDays     Int?
+  retentionPercent         Float?
+  retentionDueDate         DateTime?
+  createdAt                DateTime     @default(now())
 
-  batch       OrderBatch @relation(fields: [batchId], references: [id])
-  payments    Payment[]
-  creditNotes CreditNote[]
+  batch          OrderBatch?   @relation(fields: [batchId], references: [id])
+  org            Organization? @relation(fields: [orgId], references: [id])
+  parentInvoice  Invoice?      @relation("AdvanceBalance", fields: [parentInvoiceId], references: [id])
+  balanceInvoices Invoice[]    @relation("AdvanceBalance")
+  payments       Payment[]
+  creditNotes    CreditNote[]
 }
 
 model Payment {
@@ -298,6 +332,10 @@ model AuditLog {
   entityId  String
   action    String
   actorId   String?
+  metadata  Json?
+  requestId String?
+  ip        String?
+  userAgent String?
   createdAt DateTime @default(now())
 }
 

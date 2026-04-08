@@ -20,11 +20,39 @@ async function handler(req, res) {
     const valid = ["NET_15", "NET_30", "NET_60", "NET_90"];
     allowed.defaultPaymentTerm = valid.includes(body.defaultPaymentTerm) ? body.defaultPaymentTerm : null;
   }
+  const paymentModes = ["NET_TERMS", "ADVANCE_BALANCE", "PAY_BEFORE_DISPATCH", "STANDARD"];
+  if (body.defaultPaymentMode !== undefined) {
+    allowed.defaultPaymentMode = paymentModes.includes(body.defaultPaymentMode) ? body.defaultPaymentMode : null;
+  }
+  if (body.advancePercent !== undefined) {
+    const v = body.advancePercent === "" ? null : Number(body.advancePercent);
+    allowed.advancePercent = v != null && v >= 0 && v <= 100 ? v : undefined;
+  }
+  if (body.earlyPayDiscountPercent !== undefined) {
+    const v = body.earlyPayDiscountPercent === "" ? null : Number(body.earlyPayDiscountPercent);
+    allowed.earlyPayDiscountPercent = v != null && v >= 0 && v <= 100 ? v : undefined;
+  }
+  if (body.earlyPayDiscountDays !== undefined) {
+    const v = body.earlyPayDiscountDays === "" ? null : Number(body.earlyPayDiscountDays);
+    allowed.earlyPayDiscountDays = v != null && v >= 0 ? v : undefined;
+  }
+  if (body.retentionPercent !== undefined) {
+    const v = body.retentionPercent === "" ? null : Number(body.retentionPercent);
+    allowed.retentionPercent = v != null && v >= 0 && v <= 100 ? v : undefined;
+  }
+  if (body.retentionDays !== undefined) {
+    const v = body.retentionDays === "" ? null : Number(body.retentionDays);
+    allowed.retentionDays = v != null && v >= 0 ? v : undefined;
+  }
+  if (body.securityDepositAmount !== undefined) {
+    const v = body.securityDepositAmount === "" ? null : Number(body.securityDepositAmount);
+    allowed.securityDepositAmount = v != null && v >= 0 ? v : undefined;
+  }
   if (body.creditLimit !== undefined) allowed.creditLimit = body.creditLimit == null || body.creditLimit === "" ? null : Number(body.creditLimit);
   if (typeof body.blockNewOrdersIfOverdue === "boolean") allowed.blockNewOrdersIfOverdue = body.blockNewOrdersIfOverdue;
 
   if (Object.keys(allowed).length === 0) {
-    return res.status(400).json({ error: "No valid fields to update (buyerMargin, defaultPaymentTerm, creditLimit, blockNewOrdersIfOverdue)" });
+    return res.status(400).json({ error: "No valid fields to update" });
   }
 
   try {

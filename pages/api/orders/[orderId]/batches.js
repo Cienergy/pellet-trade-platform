@@ -16,7 +16,7 @@ async function handler(req, res) {
         include: {
           product: true,
           site: true,
-          invoice: true,
+          invoices: { include: { payments: true } },
         },
         orderBy: {
           createdAt: "desc",
@@ -135,64 +135,146 @@ async function handler(req, res) {
 
       // Calculate transaction value (Quantity × Price) for GST
       const transactionValue = batch.quantityMT * product.pricePMT;
-      
-      // Auto-classify intra/inter-state and calculate GST
-      const gstCalculation = calculateGST({
-        transactionValue,
-        buyerState: orderWithOrg.org.state,
-        sellerState: site.state,
-        gstRate: 12, // Default 12% GST, can be made configurable
-      });
-
-      // Payment term from org default; enforce NET_15, NET_30, NET_60, NET_90 only
+      const org = orderWithOrg.org;
       const validTerms = ["NET_15", "NET_30", "NET_60", "NET_90"];
-      const paymentTerm = (orderWithOrg.org.defaultPaymentTerm && validTerms.includes(orderWithOrg.org.defaultPaymentTerm))
-        ? orderWithOrg.org.defaultPaymentTerm
+      const paymentTerm = (org.defaultPaymentTerm && validTerms.includes(org.defaultPaymentTerm))
+        ? org.defaultPaymentTerm
         : "NET_30";
 
-      // Generate invoice number
-      const invoiceNumber = `INV-${new Date().toISOString().slice(0, 7).replace(/-/, "")}-${String(Date.now()).slice(-6)}`;
+      const paymentMode = org.defaultPaymentMode || "NET_TERMS";
+      const advancePercent = paymentMode === "ADVANCE_BALANCE" && org.advancePercent != null && org.advancePercent > 0 && org.advancePercent < 100
+        ? Number(org.advancePercent)
+        : null;
 
-      const invoice = await prisma.invoice.create({
-        data: {
-          batchId: batch.id,
-          number: invoiceNumber,
-          subtotal: transactionValue,
-          gstType: gstCalculation.gstType,
-          gstRate: gstCalculation.gstRate,
-          gstAmount: gstCalculation.gstAmount,
-          cgst: gstCalculation.cgst,
-          sgst: gstCalculation.sgst,
-          igst: gstCalculation.igst,
-          totalAmount: gstCalculation.totalAmount,
-          paymentTerm: paymentTerm,
-          status: "CREATED",
-        },
-      });
+      const baseTs = String(Date.now());
+      const invoiceNumber = (suffix) => `INV-${new Date().toISOString().slice(0, 7).replace(/-/, "")}-${baseTs.slice(-6)}${suffix ? `-${suffix}` : ""}`;
 
-      // Update batch status to INVOICED
+      if (advancePercent != null) {
+        // ADVANCE_BALANCE: create ADVANCE + BALANCE invoices
+        const advanceValue = (transactionValue * advancePercent) / 100;
+        const balanceValue = transactionValue - advanceValue;
+        const gstAdvance = calculateGST({
+          transactionValue: advanceValue,
+          buyerState: org.state,
+          sellerState: site.state,
+          gstRate: 12,
+        });
+        const gstBalance = calculateGST({
+          transactionValue: balanceValue,
+          buyerState: org.state,
+          sellerState: site.state,
+          gstRate: 12,
+        });
+
+        const advanceInvoice = await prisma.invoice.create({
+          data: {
+            batchId: batch.id,
+            number: invoiceNumber("A"),
+            subtotal: advanceValue,
+            gstType: gstAdvance.gstType,
+            gstRate: gstAdvance.gstRate,
+            gstAmount: gstAdvance.gstAmount,
+            cgst: gstAdvance.cgst,
+            sgst: gstAdvance.sgst,
+            igst: gstAdvance.igst,
+            totalAmount: gstAdvance.totalAmount,
+            paymentTerm,
+            status: "CREATED",
+            invoiceType: "ADVANCE",
+            advancePercent,
+            earlyPayDiscountPercent: org.earlyPayDiscountPercent ?? undefined,
+            earlyPayDiscountDays: org.earlyPayDiscountDays ?? undefined,
+          },
+        });
+
+        const deliveryAt = batch.deliveryAt || new Date();
+        const retentionDue = org.retentionPercent != null && org.retentionDays != null
+          ? new Date(deliveryAt)
+          : null;
+        if (retentionDue && org.retentionDays) retentionDue.setDate(retentionDue.getDate() + org.retentionDays);
+
+        await prisma.invoice.create({
+          data: {
+            batchId: batch.id,
+            number: invoiceNumber("B"),
+            subtotal: balanceValue,
+            gstType: gstBalance.gstType,
+            gstRate: gstBalance.gstRate,
+            gstAmount: gstBalance.gstAmount,
+            cgst: gstBalance.cgst,
+            sgst: gstBalance.sgst,
+            igst: gstBalance.igst,
+            totalAmount: gstBalance.totalAmount,
+            paymentTerm,
+            status: "CREATED",
+            invoiceType: "BALANCE",
+            parentInvoiceId: advanceInvoice.id,
+            advancePercent,
+            dueDateOverride: paymentMode === "PAY_BEFORE_DISPATCH" ? (batch.deliveryAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) : undefined,
+            earlyPayDiscountPercent: org.earlyPayDiscountPercent ?? undefined,
+            earlyPayDiscountDays: org.earlyPayDiscountDays ?? undefined,
+            retentionPercent: org.retentionPercent ?? undefined,
+            retentionDueDate: retentionDue ?? undefined,
+          },
+        });
+
+        await logAudit({ actorId: session.userId, entity: "invoice", entityId: advanceInvoice.id, action: "auto_generated" });
+      } else {
+        // Single STANDARD invoice
+        const gstCalculation = calculateGST({
+          transactionValue,
+          buyerState: org.state,
+          sellerState: site.state,
+          gstRate: 12,
+        });
+        const deliveryAt = batch.deliveryAt || new Date();
+        let retentionDueDate = null;
+        if (org.retentionPercent != null && org.retentionDays != null) {
+          retentionDueDate = new Date(deliveryAt);
+          retentionDueDate.setDate(retentionDueDate.getDate() + org.retentionDays);
+        }
+
+        const invoice = await prisma.invoice.create({
+          data: {
+            batchId: batch.id,
+            number: invoiceNumber(),
+            subtotal: transactionValue,
+            gstType: gstCalculation.gstType,
+            gstRate: gstCalculation.gstRate,
+            gstAmount: gstCalculation.gstAmount,
+            cgst: gstCalculation.cgst,
+            sgst: gstCalculation.sgst,
+            igst: gstCalculation.igst,
+            totalAmount: gstCalculation.totalAmount,
+            paymentTerm,
+            status: "CREATED",
+            invoiceType: "STANDARD",
+            dueDateOverride: paymentMode === "PAY_BEFORE_DISPATCH" ? (batch.deliveryAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) : undefined,
+            earlyPayDiscountPercent: org.earlyPayDiscountPercent ?? undefined,
+            earlyPayDiscountDays: org.earlyPayDiscountDays ?? undefined,
+            retentionPercent: org.retentionPercent ?? undefined,
+            retentionDueDate: retentionDueDate ?? undefined,
+          },
+        });
+        await logAudit({ actorId: session.userId, req, entity: "invoice", entityId: invoice.id, action: "auto_generated" });
+      }
+
       const updatedBatch = await prisma.orderBatch.update({
         where: { id: batch.id },
         data: { status: "INVOICED" },
         include: {
           product: true,
           site: true,
-          invoice: true,
+          invoices: true,
         },
       });
 
       await logAudit({
         actorId: session.userId,
+        req,
         entity: "orderBatch",
         entityId: batch.id,
         action: "created",
-      });
-
-      await logAudit({
-        actorId: session.userId,
-        entity: "invoice",
-        entityId: invoice.id,
-        action: "auto_generated",
       });
 
       return res.status(201).json(updatedBatch);

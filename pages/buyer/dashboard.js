@@ -3,10 +3,13 @@ import { useRouter } from "next/router";
 import BuyerLayout from "../../components/BuyerLayout";
 import Link from "next/link";
 import { ClipboardIcon, ClockIcon, PackageIcon, ChartIcon, CurrencyIcon, InfoIcon, ArrowRightIcon } from "../../components/Icons";
+import InsightCard from "../../components/dashboard/InsightCard";
+import EmptyState from "../../components/dashboard/EmptyState";
 
 export default function BuyerDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState(null);
+  const [bi, setBi] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,21 +29,23 @@ export default function BuyerDashboard() {
       })
       .catch(() => router.replace("/login"));
 
-    // Load buyer stats
-    fetch("/api/buyer/orders", { credentials: "include" })
-      .then((res) => res.json())
-      .then((orders) => {
+    Promise.all([
+      fetch("/api/buyer/orders", { credentials: "include" }).then((r) => r.ok ? r.json() : []),
+      fetch("/api/buyer/bi-dashboard", { credentials: "include" }).then((r) => r.ok ? r.json() : null).catch(() => null),
+    ])
+      .then(([orders, biData]) => {
         if (Array.isArray(orders)) {
           const activeOrders = orders.filter(o => o.status !== "COMPLETED").length;
           const totalMT = orders.reduce((sum, o) => sum + (o.totalMT || 0), 0);
           const totalAmount = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
           const paidAmount = orders.reduce((sum, o) => sum + (o.paidAmount || 0), 0);
           const pendingPayments = orders.reduce((sum, o) => {
-            return sum + (o.batches?.filter(b => 
-              b.invoice?.payments?.some(p => !p.verified)
-            ).length || 0);
+            return sum + (o.batches?.filter((b) => {
+              const invs = b.invoices || (b.invoice ? [b.invoice] : []);
+              return invs.some((inv) => inv?.payments?.some((p) => !p.verified));
+            }).length || 0);
           }, 0);
-          
+
           setStats({
             activeOrders,
             pendingPayments,
@@ -51,6 +56,7 @@ export default function BuyerDashboard() {
             pendingAmount: totalAmount - paidAmount,
           });
         }
+        setBi(biData);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -180,6 +186,60 @@ export default function BuyerDashboard() {
             href="/buyer/orders"
             icon={<ClipboardIcon className="w-6 h-6" />}
           />
+        </div>
+
+        {/* Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <InsightCard
+            title="Recent orders"
+            subtitle="Your latest activity (last 10)"
+            icon={<ClipboardIcon className="w-5 h-5" />}
+            right={
+              <Link href="/buyer/orders" className="text-sm font-medium text-[#0b69a3] hover:underline">
+                View all →
+              </Link>
+            }
+          >
+            {bi?.recentOrders?.length ? (
+              <div className="space-y-3">
+                {bi.recentOrders.map((o) => (
+                  <div key={o.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 truncate">#{o.id.slice(0, 6).toUpperCase()}</div>
+                      <div className="text-xs text-slate-500 truncate">{o.deliveryLocation || "—"}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold text-slate-700">{(o.totalMT || 0).toFixed(1)} MT</div>
+                      <div className="text-xs text-slate-500">{String(o.status).replace(/_/g, " ")}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No recent orders" subtitle="Place an order from the catalog to get started." />
+            )}
+          </InsightCard>
+
+          <InsightCard
+            title="What you order most"
+            subtitle="Top products by batches"
+            icon={<PackageIcon className="w-5 h-5" />}
+          >
+            {bi?.favoriteProducts?.length ? (
+              <div className="space-y-3">
+                {bi.favoriteProducts.map((p, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 truncate">{p.productName}</div>
+                      <div className="text-xs text-slate-500">{p.orderCount} batches · {(p.totalMT || 0).toFixed(1)} MT</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="Not enough history yet" subtitle="Once you have a few batches, your favorites will show here." />
+            )}
+          </InsightCard>
         </div>
 
         {/* Info Banner */}

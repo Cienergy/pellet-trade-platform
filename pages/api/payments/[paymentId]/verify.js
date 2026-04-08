@@ -16,6 +16,7 @@ async function handler(req, res) {
       invoice: {
         include: {
           batch: true,
+          payments: true,
         },
       },
     },
@@ -25,7 +26,6 @@ async function handler(req, res) {
     return res.status(404).json({ error: "Payment not found" });
   }
 
-  // Update payment verification status; set verifiedAt for SLA tracking
   const updatedPayment = await prisma.payment.update({
     where: { id: paymentId },
     data: {
@@ -34,12 +34,27 @@ async function handler(req, res) {
     },
   });
 
-  // If payment is approved, update batch status to PAYMENT_APPROVED
   if (approve !== false && payment.invoice?.batch) {
-    await prisma.orderBatch.update({
-      where: { id: payment.invoice.batch.id },
-      data: { status: "PAYMENT_APPROVED" },
-    });
+    const batchId = payment.invoice.batch.id;
+    const inv = payment.invoice;
+    if (inv.invoiceType === "ADVANCE") {
+      const fresh = await prisma.invoice.findUnique({
+        where: { id: inv.id },
+        include: { payments: true },
+      });
+      const paid = (fresh?.payments || []).filter((p) => p.verified).reduce((s, p) => s + p.amount, 0);
+      if (paid >= (fresh?.totalAmount ?? 0)) {
+        await prisma.orderBatch.update({
+          where: { id: batchId },
+          data: { status: "PAYMENT_APPROVED" },
+        });
+      }
+    } else {
+      await prisma.orderBatch.update({
+        where: { id: batchId },
+        data: { status: "PAYMENT_APPROVED" },
+      });
+    }
   }
 
   await prisma.auditLog.create({

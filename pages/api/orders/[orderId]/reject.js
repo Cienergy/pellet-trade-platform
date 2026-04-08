@@ -56,6 +56,7 @@ async function handler(req, res) {
 
       await logAudit({
         actorId: session.userId,
+        req,
         entity: "order",
         entityId: orderId,
         action: "rejected",

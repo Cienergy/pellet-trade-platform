@@ -252,6 +252,7 @@ async function main() {
           paymentTerm,
           status: "CREATED",
           erpStatus: "PENDING",
+          invoiceType: "STANDARD",
         },
       });
       // Add payment(s) for first two invoices so dashboard shows pending + verified

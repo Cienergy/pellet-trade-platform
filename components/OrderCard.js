@@ -2,25 +2,23 @@ import { useState } from "react";
 import BatchCard from "./BatchCard";
 import { showToast } from "./Toast";
 import { formatIST, formatISTDate } from "../lib/dateUtils";
+import { getBatchTotalAmount, getBatchPaidAmount } from "../lib/invoiceHelpers";
 
-export default function OrderCard({ order }) {
-  // Auto-expand if there are pending payments
-  const hasPendingPayments = order.batches?.some(b => {
-    if (!b.invoice) return false;
-    const paidAmount = b.invoice.payments?.filter(p => p.verified).reduce((sum, p) => sum + p.amount, 0) || 0;
-    return paidAmount < (b.invoice.totalAmount || b.invoice.total || 0);
+export default function OrderCard({ order, onRepeatOrder }) {
+  const hasPendingPayments = order.batches?.some((b) => {
+    const total = getBatchTotalAmount(b);
+    const paid = getBatchPaidAmount(b);
+    return total > 0 && paid < total;
   });
-  
   const [expanded, setExpanded] = useState(hasPendingPayments || false);
 
   const requestedMT = order.requestedQuantityMT || order.totalMT || order.batches?.reduce((sum, b) => sum + (b.quantityMT || 0), 0) || 0;
   const batchedMT = order.batchedMT || order.batches?.reduce((sum, b) => sum + (b.quantityMT || 0), 0) || 0;
   const remainingMT = order.remainingMT !== undefined ? order.remainingMT : Math.max(0, requestedMT - batchedMT);
-  const totalMT = batchedMT; // Total batched quantity
-  
-  // Amount calculations
-  const fullPOAmount = order.fullPOAmount || order.batches?.reduce((sum, b) => sum + (b.invoice?.totalAmount || 0), 0) || 0; // Full PO amount to be paid
-  const invoicedAmount = order.invoicedAmount || order.totalAmount || order.batches?.reduce((sum, b) => sum + (b.invoice?.totalAmount || 0), 0) || 0; // Amount raised/invoiced
+  const totalMT = batchedMT;
+
+  const fullPOAmount = order.fullPOAmount || order.batches?.reduce((sum, b) => sum + getBatchTotalAmount(b), 0) || 0;
+  const invoicedAmount = order.invoicedAmount || order.totalAmount || order.batches?.reduce((sum, b) => sum + getBatchTotalAmount(b), 0) || 0;
   const paidAmount = order.paidAmount || 0;
   const pendingAmount = order.pendingAmount || (invoicedAmount - paidAmount);
   
@@ -61,6 +59,8 @@ export default function OrderCard({ order }) {
     }
     return order.status.replace(/_/g, " ");
   };
+
+  const canRepeat = typeof onRepeatOrder === "function" && typeof order?.id === "string" && order.status !== "REJECTED";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
@@ -118,6 +118,17 @@ export default function OrderCard({ order }) {
               <div className="w-2 h-2 rounded-full bg-white/30"></div>
               {getStatusText()}
             </div>
+            {canRepeat && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => onRepeatOrder(order.id)}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition"
+                >
+                  Repeat order
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -254,9 +265,9 @@ export default function OrderCard({ order }) {
                     <div className="font-semibold text-yellow-900 mb-1">Payment Required</div>
                     <div className="text-sm text-yellow-800 mb-2">
                       You have <span className="font-bold">₹{pendingAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span> pending payment across {order.batches?.filter(b => {
-                        if (!b.invoice) return false;
-                        const paid = b.invoice.payments?.filter(p => p.verified).reduce((sum, p) => sum + p.amount, 0) || 0;
-                        return paid < (b.invoice.totalAmount || b.invoice.total || 0);
+                        const total = getBatchTotalAmount(b);
+                        const paid = getBatchPaidAmount(b);
+                        return total > 0 && paid < total;
                       }).length || 0} invoice(s).
                     </div>
                     <button
@@ -308,14 +319,14 @@ export default function OrderCard({ order }) {
           {/* Group batches by payment term */}
           {(() => {
             const batchesByPaymentTerm = order.batches.reduce((acc, batch) => {
-              if (!batch.invoice) {
+              if (!batch.invoices?.length) {
                 // Batches without invoices go to "No Invoice" group
                 if (!acc['NO_INVOICE']) acc['NO_INVOICE'] = [];
                 acc['NO_INVOICE'].push(batch);
                 return acc;
               }
               
-              const term = batch.invoice.paymentTerm || 'NET_30';
+              const term = batch.invoices?.[0]?.paymentTerm || "NET_30";
               if (!acc[term]) acc[term] = [];
               acc[term].push(batch);
               return acc;
@@ -328,7 +339,7 @@ export default function OrderCard({ order }) {
               if (!batches || batches.length === 0) return null;
 
               // Calculate summary for this payment term
-              const invoices = batches.filter(b => b.invoice).map(b => b.invoice);
+              const invoices = batches.flatMap((b) => b.invoices || []);
               const totalAmount = invoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
               const paidAmount = invoices.reduce((sum, inv) => {
                 const invPaid = inv.payments?.filter(p => p.verified).reduce((pSum, p) => pSum + p.amount, 0) || 0;
@@ -336,12 +347,12 @@ export default function OrderCard({ order }) {
               }, 0);
               const pendingAmount = totalAmount - paidAmount;
 
-              // Calculate due dates
-              const paymentTermDays = { NET_30: 30, NET_60: 60, NET_90: 90 };
-              const dueDates = invoices.map(inv => {
+              const paymentTermDays = { NET_15: 15, NET_30: 30, NET_60: 60, NET_90: 90 };
+              const dueDates = invoices.map((inv) => {
+                if (inv.dueDateOverride) return new Date(inv.dueDateOverride);
                 const invDate = new Date(inv.createdAt);
                 const dueDate = new Date(invDate);
-                dueDate.setDate(dueDate.getDate() + (paymentTermDays[term] || 30));
+                dueDate.setDate(dueDate.getDate() + (paymentTermDays[inv.paymentTerm] || paymentTermDays[term] || 30));
                 return dueDate;
               });
               

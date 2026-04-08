@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import BuyerLayout from "../../components/BuyerLayout";
 import OrderCard from "../../components/OrderCard";
 import Image from "next/image";
+import { showToast } from "../../components/Toast";
 
 export default function BuyerOrders() {
   const router = useRouter();
@@ -60,6 +61,27 @@ export default function BuyerOrders() {
     completed: orders.filter((o) => o.status === "COMPLETED").length,
     pending: orders.filter((o) => o.remainingMT > 0).length,
   };
+
+  async function handleRepeatOrder(orderId) {
+    try {
+      const res = await fetch(`/api/buyer/orders/${orderId}/repeat`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data?.error || "Failed to repeat order", "error");
+        return;
+      }
+      showToast("Order repeated and sent for approval", "success");
+      // quick refresh
+      router.replace(router.asPath);
+    } catch (e) {
+      console.error("Repeat order error:", e);
+      showToast("Failed to repeat order", "error");
+    }
+  }
 
   return (
     <BuyerLayout title="My Orders">
@@ -175,7 +197,7 @@ export default function BuyerOrders() {
         ) : (
           <div className="space-y-6">
             {filteredOrders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard key={order.id} order={order} onRepeatOrder={handleRepeatOrder} />
             ))}
           </div>
         )}

@@ -46,24 +46,14 @@ async function handler(req, res) {
 }
 
 export default requireAuth(async function(req, res) {
-  const session = req.session;
-  
-  // GET: Allow ADMIN, OPS, and BUYER (buyers need sites for order creation)
   if (req.method === "GET") {
-    if (session.role !== "ADMIN" && session.role !== "OPS" && session.role !== "BUYER") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    return handler(req, res);
+    return requireRole(["ADMIN", "OPS", "BUYER"], handler)(req, res);
   }
-  
-  // POST: Only ADMIN
+
   if (req.method === "POST") {
-    if (session.role !== "ADMIN") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    return handler(req, res);
+    return requireRole("ADMIN", handler)(req, res);
   }
-  
+
   return res.status(405).end();
 });
 

@@ -1,17 +1,13 @@
 import PayInvoiceForm from "./PayInvoiceForm";
 import { showToast } from "./Toast";
 import { formatISTDate } from "../lib/dateUtils";
+import { getPrimaryInvoice, getBatchTotalAmount, getBatchPaidAmount } from "../lib/invoiceHelpers";
 
 function calculateDueDate(invoice) {
-  if (!invoice || !invoice.createdAt) return null;
-  
-  const paymentTermDays = {
-    NET_15: 15,
-    NET_30: 30,
-    NET_60: 60,
-    NET_90: 90,
-  };
-  
+  if (!invoice) return null;
+  if (invoice.dueDateOverride) return new Date(invoice.dueDateOverride);
+  if (!invoice.createdAt) return null;
+  const paymentTermDays = { NET_15: 15, NET_30: 30, NET_60: 60, NET_90: 90 };
   const invoiceDate = new Date(invoice.createdAt);
   const dueDate = new Date(invoiceDate);
   dueDate.setDate(dueDate.getDate() + (paymentTermDays[invoice.paymentTerm] || 30));
@@ -33,11 +29,12 @@ function getDueDateStatus(dueDate) {
 }
 
 export default function BatchCard({ batch, index = 0 }) {
-  const invoice = batch.invoice;
+  const invoice = getPrimaryInvoice(batch);
+  const invoices = batch.invoices || [];
   const siteName = batch.site?.name || batch.site || "Unknown";
   const productName = batch.product?.name || "Unknown Product";
-  const invoiceTotal = invoice?.totalAmount ?? invoice?.total ?? null;
-  const batchAmount = invoiceTotal ?? (batch.quantityMT * (batch.product?.pricePMT || 0) * 1.05); // Approximate if no invoice
+  const invoiceTotal = getBatchTotalAmount(batch) || invoice?.totalAmount || invoice?.total || null;
+  const batchAmount = invoiceTotal ?? (batch.quantityMT * (batch.product?.pricePMT || 0) * 1.05);
 
   const statusConfig = {
     CREATED: { color: "from-gray-400 to-gray-500", label: "Created", icon: "○" },
@@ -49,8 +46,8 @@ export default function BatchCard({ batch, index = 0 }) {
   };
 
   const status = statusConfig[batch.status] || statusConfig.CREATED;
-  const paidAmount = invoice?.payments?.filter(p => p.verified).reduce((sum, p) => sum + p.amount, 0) || 0;
-  const isFullyPaid = invoice && paidAmount >= (invoiceTotal || 0);
+  const paidAmount = getBatchPaidAmount(batch);
+  const isFullyPaid = invoices.length > 0 && paidAmount >= (invoiceTotal || 0);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
@@ -141,96 +138,69 @@ export default function BatchCard({ batch, index = 0 }) {
       </div>
 
       {/* Invoice Details */}
-      {invoice ? (
-        <div className="border-t border-gray-100 pt-3 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-medium text-gray-700">Invoice #{invoice.number}</span>
-            <span className="text-sm font-bold text-gray-900">
-              ₹{Number(invoiceTotal || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-              <span className="text-xs font-normal text-gray-500 ml-1">(incl. GST)</span>
-            </span>
-          </div>
-
-          <div className="text-xs text-gray-500 space-y-1">
-            <div>
-              Order value (ex GST): ₹{invoice.subtotal.toLocaleString("en-IN")} · GST {invoice.gstRate}%: ₹{invoice.gstAmount.toLocaleString("en-IN")}
-            </div>
-            {(() => {
-              const dueDate = calculateDueDate(invoice);
-              const { isOverdue, daysUntilDue } = getDueDateStatus(dueDate);
-              if (!dueDate) return null;
-              
-              return (
-                <div className={`font-medium ${isOverdue ? 'text-red-600' : daysUntilDue <= 7 ? 'text-yellow-600' : 'text-gray-600'}`}>
-                  Payment Terms: {invoice.paymentTerm?.replace("NET_", "Net ") || "Net 30"} · 
-                  Due: {formatISTDate(dueDate)}
-                  {isOverdue && ` (Overdue by ${Math.abs(daysUntilDue)} ${Math.abs(daysUntilDue) === 1 ? 'day' : 'days'})`}
-                  {!isOverdue && daysUntilDue <= 7 && ` (${daysUntilDue} ${daysUntilDue === 1 ? 'day' : 'days'} remaining)`}
-                </div>
-              );
-            })()}
-          </div>
-
-          <div className="flex items-center justify-between pt-1">
-            <a
-              href={`/api/invoices/${invoice.id}/pdf`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-medium text-[#0b69a3] hover:underline"
-            >
-              Download invoice (PDF)
-            </a>
-            <a
-              href={`/invoice/${invoice.id}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-gray-500 hover:text-gray-700"
-            >
-              View
-            </a>
-          </div>
-
-          {/* Payment Status */}
-          {invoice.payments && invoice.payments.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-medium text-gray-700">Total Amount Paid:</span>
-                <span className="font-bold text-green-600">
-                  ₹{paidAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                </span>
-              </div>
-              <div className="text-xs font-medium text-gray-700">Payment Details:</div>
-              {invoice.payments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1">
-                  <span className="text-gray-600">
-                    ₹{p.amount.toLocaleString("en-IN")} via {p.mode || "N/A"}
+      {invoices.length > 0 ? (
+        <div className="border-t border-gray-100 pt-3 space-y-4">
+          {invoices.map((inv) => {
+            const invPaid = (inv.payments || []).filter((p) => p.verified).reduce((s, p) => s + p.amount, 0);
+            const invTotal = Number(inv.totalAmount) || 0;
+            const invFullyPaid = invPaid >= invTotal;
+            const typeLabel = inv.invoiceType === "ADVANCE" ? "Advance" : inv.invoiceType === "BALANCE" ? "Balance" : "";
+            return (
+              <div key={inv.id} className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-gray-700">
+                    Invoice #{inv.number}
+                    {typeLabel && <span className="ml-1 text-indigo-600">({typeLabel})</span>}
                   </span>
-                  {p.verified ? (
-                    <span className="inline-flex items-center gap-1 text-green-600 font-medium">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Verified
-                    </span>
-                  ) : (
-                    <span className="text-yellow-600 font-medium">Payment under verification</span>
-                  )}
+                  <span className="text-sm font-bold text-gray-900">
+                    ₹{invTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                    <span className="text-xs font-normal text-gray-500 ml-1">(incl. GST)</span>
+                  </span>
                 </div>
-              ))}
-              {!isFullyPaid && (
-                <div className="text-xs text-amber-600 font-medium mt-1">
-                  Remaining: ₹{(Number(invoiceTotal || 0) - paidAmount).toLocaleString("en-IN")}
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div>
+                    Order value (ex GST): ₹{(inv.subtotal || 0).toLocaleString("en-IN")} · GST {inv.gstRate}%: ₹{(inv.gstAmount || 0).toLocaleString("en-IN")}
+                  </div>
+                  {(() => {
+                    const dueDate = calculateDueDate(inv);
+                    const { isOverdue, daysUntilDue } = getDueDateStatus(dueDate);
+                    if (!dueDate) return null;
+                    return (
+                      <div className={`font-medium ${isOverdue ? "text-red-600" : daysUntilDue <= 7 ? "text-yellow-600" : "text-gray-600"}`}>
+                        Payment Terms: {inv.paymentTerm?.replace("NET_", "Net ") || "Net 30"} · Due: {formatISTDate(dueDate)}
+                        {isOverdue && ` (Overdue by ${Math.abs(daysUntilDue)} ${Math.abs(daysUntilDue) === 1 ? "day" : "days"})`}
+                        {!isOverdue && daysUntilDue <= 7 && ` (${daysUntilDue} ${daysUntilDue === 1 ? "day" : "days"} remaining)`}
+                      </div>
+                    );
+                  })()}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Payment Form */}
-          {(!invoice.payments || invoice.payments.length === 0 || !isFullyPaid) && (
-            <div className="pt-2">
-              <PayInvoiceForm invoiceId={invoice.id} invoice={invoice} />
-            </div>
-          )}
+                <div className="flex items-center justify-between pt-1">
+                  <a href={`/api/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#0b69a3] hover:underline">
+                    Download PDF
+                  </a>
+                  <a href={`/invoice/${inv.id}`} target="_blank" rel="noreferrer" className="text-xs text-gray-500 hover:text-gray-700">
+                    View
+                  </a>
+                </div>
+                {(inv.payments || []).length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium text-gray-700">Paid:</span>
+                      <span className="font-bold text-green-600">₹{invPaid.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    {!invFullyPaid && (
+                      <div className="text-xs text-amber-600 font-medium">Remaining: ₹{(invTotal - invPaid).toLocaleString("en-IN")}</div>
+                    )}
+                  </div>
+                )}
+                {!invFullyPaid && (
+                  <div className="pt-1">
+                    <PayInvoiceForm invoiceId={inv.id} invoice={inv} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="border-t border-gray-100 pt-3 text-xs text-gray-400 text-center">

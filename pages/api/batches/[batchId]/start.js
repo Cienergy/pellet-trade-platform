@@ -12,14 +12,11 @@ async function handler(req, res) {
   }
 
   try {
-    // Check if batch has approved payment
     const batch = await prisma.orderBatch.findUnique({
       where: { id: batchId },
       include: {
-        invoice: {
-          include: {
-            payments: true,
-          },
+        invoices: {
+          include: { payments: true },
         },
       },
     });
@@ -28,30 +25,44 @@ async function handler(req, res) {
       return res.status(404).json({ error: "Batch not found" });
     }
 
-    // Check if payment is approved
-    const hasApprovedPayment = batch.invoice?.payments?.some(
-      (p) => p.verified === true
-    );
+    const invoices = batch.invoices || [];
+    const advanceInvoices = invoices.filter((inv) => inv.invoiceType === "ADVANCE");
 
-    if (!hasApprovedPayment) {
+    let canStart = false;
+    if (advanceInvoices.length > 0) {
+      const advanceRequired = advanceInvoices.reduce((s, inv) => s + inv.totalAmount, 0);
+      const advancePaid = advanceInvoices.reduce((sum, inv) => {
+        const paid = (inv.payments || []).filter((p) => p.verified).reduce((s, p) => s + p.amount, 0);
+        return sum + paid;
+      }, 0);
+      canStart = advancePaid >= advanceRequired;
+    } else {
+      canStart = invoices.some((inv) =>
+        (inv.payments || []).some((p) => p.verified === true)
+      );
+    }
+
+    if (!canStart) {
       return res.status(400).json({
-        error: "Cannot start processing. Payment must be approved first.",
+        error: advanceInvoices.length > 0
+          ? "Cannot start processing. Advance payment must be fully approved first."
+          : "Cannot start processing. Payment must be approved first.",
       });
     }
 
-    // Update batch status to IN_PROGRESS
     const updatedBatch = await prisma.orderBatch.update({
       where: { id: batchId },
       data: { status: "IN_PROGRESS" },
       include: {
         product: true,
         site: true,
-        invoice: true,
+        invoices: true,
       },
     });
 
     await logAudit({
       actorId: session.userId,
+      req,
       entity: "orderBatch",
       entityId: batchId,
       action: "started_processing",

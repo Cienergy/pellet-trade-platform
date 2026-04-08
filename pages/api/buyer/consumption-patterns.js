@@ -1,12 +1,9 @@
 import prisma from "../../../lib/prisma";
 import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
 
 async function handler(req, res) {
   const session = req.session;
-
-  if (session.role !== "BUYER") {
-    return res.status(403).json({ error: "Forbidden" });
-  }
 
   if (req.method !== "GET") {
     return res.status(405).end();
@@ -24,7 +21,7 @@ async function handler(req, res) {
       batches: {
         include: {
           product: true,
-          invoice: true,
+          invoices: true,
         },
       },
       requestedProduct: true,
@@ -72,9 +69,9 @@ async function handler(req, res) {
       }
       productStats[productName].totalQuantity += batch.quantityMT;
       productStats[productName].orderCount += 1;
-      if (batch.invoice) {
-        productStats[productName].totalValue += batch.invoice.totalAmount;
-      }
+      (batch.invoices || []).forEach((inv) => {
+        productStats[productName].totalValue += inv.totalAmount || 0;
+      });
     });
   });
 
@@ -113,5 +110,5 @@ async function handler(req, res) {
   return res.status(200).json(patterns);
 }
 
-export default requireAuth(handler);
+export default requireAuth(requireRole("BUYER", handler));
 

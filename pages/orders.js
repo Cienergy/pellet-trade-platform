@@ -62,7 +62,7 @@ export default function OrdersPage() {
                       : "Immediate"}
                   </div>
 
-                  <InvoiceBlock invoice={batch.invoice} />
+                  <InvoiceBlock invoice={batch.invoices?.[0] ?? batch.invoice} />
                 </div>
               ))}
             </div>

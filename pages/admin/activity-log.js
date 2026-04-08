@@ -8,11 +8,14 @@ export default function AdminActivityLog() {
   const [loading, setLoading] = useState(true);
   const [entity, setEntity] = useState("");
   const [action, setAction] = useState("");
+  const [requestId, setRequestId] = useState("");
+  const [expanded, setExpanded] = useState(() => new Set());
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (entity) params.set("entity", entity);
     if (action) params.set("action", action);
+    if (requestId) params.set("requestId", requestId);
     params.set("limit", "100");
     fetch(`/api/admin/activity-log?${params}`, { credentials: "include" })
       .then((res) => {
@@ -24,7 +27,16 @@ export default function AdminActivityLog() {
       })
       .then(setLogs)
       .finally(() => setLoading(false));
-  }, [entity, action, router]);
+  }, [entity, action, requestId, router]);
+
+  function toggleExpanded(id) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -65,6 +77,13 @@ export default function AdminActivityLog() {
               value={action}
               onChange={(e) => setAction(e.target.value)}
             />
+            <input
+              type="text"
+              placeholder="Filter by requestId"
+              className="border border-gray-300 rounded px-3 py-1.5 text-sm w-64 font-mono"
+              value={requestId}
+              onChange={(e) => setRequestId(e.target.value)}
+            />
           </div>
         </div>
       </div>
@@ -85,21 +104,66 @@ export default function AdminActivityLog() {
                     <th className="p-3 border-b">Action</th>
                     <th className="p-3 border-b">Entity ID</th>
                     <th className="p-3 border-b">User</th>
+                    <th className="p-3 border-b">Request</th>
+                    <th className="p-3 border-b">Details</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(Array.isArray(logs) ? logs : []).map((log) => (
-                    <tr key={log.id} className="border-b border-gray-100">
-                      <td className="p-3 text-gray-600">
-                        {log.createdAt ? new Date(log.createdAt).toLocaleString() : "—"}
-                      </td>
-                      <td className="p-3 font-medium">{log.entity}</td>
-                      <td className="p-3">{log.action}</td>
-                      <td className="p-3 font-mono text-xs text-gray-500">{log.entityId?.slice(0, 8)}…</td>
-                      <td className="p-3">
-                        {log.actor?.name || log.actor?.email || (log.actorId ? "—" : "System")}
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={log.id} className="border-b border-gray-100 align-top">
+                        <td className="p-3 text-gray-600 whitespace-nowrap">
+                          {log.createdAt ? new Date(log.createdAt).toLocaleString() : "—"}
+                        </td>
+                        <td className="p-3 font-medium">{log.entity}</td>
+                        <td className="p-3">{log.action}</td>
+                        <td className="p-3 font-mono text-xs text-gray-500 whitespace-nowrap">
+                          {log.entityId ? `${log.entityId.slice(0, 8)}…` : "—"}
+                        </td>
+                        <td className="p-3">
+                          {log.actor?.name || log.actor?.email || (log.actorId ? "—" : "System")}
+                        </td>
+                        <td className="p-3 font-mono text-xs text-gray-500 whitespace-nowrap">
+                          {log.requestId ? `${log.requestId.slice(0, 12)}…` : "—"}
+                        </td>
+                        <td className="p-3">
+                          {(log.metadata || log.ip || log.userAgent) ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(log.id)}
+                              className="text-[#0b69a3] hover:underline text-xs"
+                            >
+                              {expanded.has(log.id) ? "Hide" : "View"}
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      {expanded.has(log.id) && (
+                        <tr className="border-b border-gray-100 bg-gray-50">
+                          <td className="p-3" colSpan={7}>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div className="bg-white border border-gray-200 rounded-lg p-3">
+                                <div className="text-xs font-semibold text-gray-700 mb-1">Request</div>
+                                <div className="text-xs text-gray-600 font-mono break-all">
+                                  {log.requestId || "—"}
+                                </div>
+                                <div className="text-xs text-gray-600 mt-2">
+                                  <span className="font-semibold">IP:</span> {log.ip || "—"}
+                                </div>
+                              </div>
+                              <div className="bg-white border border-gray-200 rounded-lg p-3 md:col-span-2">
+                                <div className="text-xs font-semibold text-gray-700 mb-1">Metadata</div>
+                                <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words font-mono">
+                                  {log.metadata ? JSON.stringify(log.metadata, null, 2) : "—"}
+                                </pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>

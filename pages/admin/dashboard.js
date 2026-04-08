@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { UsersIcon, PackageIcon, FactoryIcon, ChartIcon, ClipboardIcon, ArrowRightIcon, TrendingUpIcon } from "../../components/Icons";
 import LogoutButton from "../../components/LogoutButton";
+import Sparkline from "../../components/dashboard/Sparkline";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -182,6 +183,38 @@ export default function AdminDashboard() {
                   ))
                 ) : (
                   <div className="text-center py-8 text-gray-500 text-sm">No product data available</div>
+                )}
+              </div>
+            </div>
+
+            {/* Revenue Trend (30d) */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
+                    <TrendingUpIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Revenue Trend</h2>
+                    <p className="text-sm text-gray-500">Invoices created (last 30 days)</p>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <Sparkline
+                    values={(biData.dailyRevenue || []).slice(-30).map((d) => d.amount || 0)}
+                    stroke="#059669"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {(biData.dailyRevenue || []).slice(-7).reverse().map((d) => (
+                  <div key={d.date} className="flex items-center justify-between text-sm">
+                    <div className="text-gray-600">{d.date}</div>
+                    <div className="font-semibold text-gray-900">₹{Math.round(d.amount || 0).toLocaleString("en-IN")}</div>
+                  </div>
+                ))}
+                {(!biData.dailyRevenue || biData.dailyRevenue.length === 0) && (
+                  <div className="text-center py-8 text-gray-500 text-sm">No revenue data available</div>
                 )}
               </div>
             </div>

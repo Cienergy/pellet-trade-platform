@@ -5,6 +5,7 @@ import requireRole from "../../../lib/requireRole";
 const PAYMENT_TERM_DAYS = { NET_15: 15, NET_30: 30, NET_60: 60, NET_90: 90 };
 
 function getDueDate(inv) {
+  if (inv?.dueDateOverride) return new Date(inv.dueDateOverride);
   if (!inv?.createdAt) return null;
   const d = new Date(inv.createdAt);
   d.setDate(d.getDate() + (PAYMENT_TERM_DAYS[inv.paymentTerm] || 30));
@@ -70,7 +71,7 @@ async function handler(req, res) {
         order: { status: { not: "REJECTED" } },
       },
     },
-    include: { payments: true },
+    include: { payments: true, batch: { include: { order: { include: { org: true } } } } },
   });
 
   const today = new Date();
@@ -90,6 +91,26 @@ async function handler(req, res) {
     else if (daysUntil <= 7) dueIn7Count++;
   }
 
+  // Top overdue orgs by outstanding (lightweight computation)
+  const overdueByOrg = {};
+  for (const inv of allInvoices) {
+    const paid = inv.payments?.filter((p) => p.verified).reduce((s, p) => s + p.amount, 0) || 0;
+    const outstanding = Math.max(0, (inv.totalAmount || 0) - paid);
+    if (outstanding <= 0) continue;
+    const due = getDueDate(inv);
+    if (!due) continue;
+    if (new Date(due).getTime() >= today.getTime()) continue;
+    const orgId = inv.batch?.order?.orgId;
+    const orgName = inv.batch?.order?.org?.name || "Unknown";
+    if (!orgId) continue;
+    if (!overdueByOrg[orgId]) overdueByOrg[orgId] = { orgId, orgName, overdueOutstanding: 0, invoiceCount: 0 };
+    overdueByOrg[orgId].overdueOutstanding += outstanding;
+    overdueByOrg[orgId].invoiceCount += 1;
+  }
+  const topOverdueOrgs = Object.values(overdueByOrg)
+    .sort((a, b) => b.overdueOutstanding - a.overdueOutstanding)
+    .slice(0, 5);
+
   return res.status(200).json({
     pendingPayments,
     pendingAmount: pendingAmount._sum.amount || 0,
@@ -98,6 +119,7 @@ async function handler(req, res) {
     verifiedPayments,
     overdueCount,
     dueIn7Count,
+    topOverdueOrgs,
   });
 }
 

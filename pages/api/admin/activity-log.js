@@ -5,13 +5,14 @@ import requireRole from "../../../lib/requireRole";
 async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
-  const { entity, action, actorId, limit = "100" } = req.query;
+  const { entity, action, actorId, requestId, limit = "100" } = req.query;
   const take = Math.min(parseInt(limit, 10) || 100, 500);
 
   const where = {};
   if (entity) where.entity = entity;
   if (action) where.action = { contains: action, mode: "insensitive" };
   if (actorId) where.actorId = actorId;
+  if (requestId) where.requestId = String(requestId);
 
   const logs = await prisma.auditLog.findMany({
     where,
@@ -35,6 +36,10 @@ async function handler(req, res) {
     action: log.action,
     actorId: log.actorId,
     actor: log.actorId ? actorMap[log.actorId] : null,
+    requestId: log.requestId || null,
+    ip: log.ip || null,
+    userAgent: log.userAgent || null,
+    metadata: log.metadata || null,
     createdAt: log.createdAt,
   }));
 

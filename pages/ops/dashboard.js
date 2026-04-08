@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ClockIcon, SettingsIcon, PackageIcon, ChartIcon, ClipboardIcon, ArrowRightIcon } from "../../components/Icons";
+import { ClockIcon, SettingsIcon, PackageIcon, ChartIcon, ClipboardIcon, ArrowRightIcon, CurrencyIcon } from "../../components/Icons";
 import LogoutButton from "../../components/LogoutButton";
 
 export default function OpsDashboard() {
@@ -71,7 +71,7 @@ export default function OpsDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
           <StatCard
             label="Pending Orders"
             value={stats.pendingOrders}
@@ -97,6 +97,19 @@ export default function OpsDashboard() {
             value={stats.inventoryUpdates}
             icon={<ChartIcon className="w-6 h-6" />}
             accentColor="text-green-600"
+          />
+          <StatCard
+            label="Freight (7d)"
+            value={`₹${Math.round((stats.freight?.sum7d || 0)).toLocaleString("en-IN")}`}
+            icon={<CurrencyIcon className="w-6 h-6" />}
+            accentColor="text-emerald-600"
+          />
+          <StatCard
+            label="Missing Freight (7d)"
+            value={stats.freight?.missingCount7d || 0}
+            icon={<ClockIcon className="w-6 h-6" />}
+            highlight={(stats.freight?.missingCount7d || 0) > 0}
+            accentColor="text-amber-600"
           />
         </div>
 

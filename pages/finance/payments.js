@@ -174,7 +174,7 @@ export default function FinancePayments() {
                   <div>
                     <div className="text-sm text-gray-500">Organization</div>
                     <div className="font-semibold">
-                      {payment.invoice?.batch?.order?.org?.name || "-"}
+                      {payment.invoice?.batch?.order?.org?.name || payment.invoice?.org?.name || "-"}
                     </div>
                   </div>
                 </div>

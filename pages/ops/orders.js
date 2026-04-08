@@ -19,6 +19,10 @@ export default function OpsOrders() {
   const [dispatchForm, setDispatchForm] = useState({
     committedMT: "",
     suppliedMT: "",
+    freightCost: "",
+    freightVendorName: "",
+    freightInvoiceRef: "",
+    freightNotes: "",
     dispatchImage: null,
   });
   const [batchForm, setBatchForm] = useState({
@@ -185,6 +189,10 @@ export default function OpsOrders() {
       setDispatchForm({
         committedMT: batch.committedMT?.toString() || batch.quantityMT?.toString() || "",
         suppliedMT: batch.suppliedMT?.toString() || batch.quantityMT?.toString() || "",
+        freightCost: batch.freightCost != null ? String(batch.freightCost) : "",
+        freightVendorName: batch.freightVendorName || "",
+        freightInvoiceRef: batch.freightInvoiceRef || "",
+        freightNotes: batch.freightNotes || "",
         dispatchImage: null,
       });
       setShowDispatchModal(true);
@@ -234,6 +242,10 @@ export default function OpsOrders() {
           batchId: selectedBatch.id,
           committedMT: dispatchForm.committedMT ? Number(dispatchForm.committedMT) : undefined,
           suppliedMT: dispatchForm.suppliedMT ? Number(dispatchForm.suppliedMT) : undefined,
+          freightCost: dispatchForm.freightCost === "" ? undefined : Number(dispatchForm.freightCost),
+          freightVendorName: dispatchForm.freightVendorName || undefined,
+          freightInvoiceRef: dispatchForm.freightInvoiceRef || undefined,
+          freightNotes: dispatchForm.freightNotes || undefined,
           dispatchImageUrl,
         }),
       });
@@ -258,7 +270,7 @@ export default function OpsOrders() {
         await loadData();
         setShowDispatchModal(false);
         setSelectedBatch(null);
-        setDispatchForm({ committedMT: "", suppliedMT: "", dispatchImage: null });
+        setDispatchForm({ committedMT: "", suppliedMT: "", freightCost: "", freightVendorName: "", freightInvoiceRef: "", freightNotes: "", dispatchImage: null });
         
         if (data.orderCompleted) {
           showToast("Batch dispatched and completed! Order marked as COMPLETED.", "success");
@@ -449,7 +461,7 @@ export default function OpsOrders() {
                 onClick={() => {
                   setShowDispatchModal(false);
                   setSelectedBatch(null);
-                  setDispatchForm({ committedMT: "", suppliedMT: "", dispatchImage: null });
+                  setDispatchForm({ committedMT: "", suppliedMT: "", freightCost: "", freightVendorName: "", freightInvoiceRef: "", freightNotes: "", dispatchImage: null });
                 }}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
               >
@@ -497,6 +509,54 @@ export default function OpsOrders() {
               <p className="text-xs text-gray-500 mt-1">Actual volume supplied</p>
             </div>
 
+            <div className="border-t pt-3">
+              <div className="text-sm font-semibold text-gray-900 mb-2">Freight (manual)</div>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Freight cost (INR)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                    value={dispatchForm.freightCost}
+                    onChange={(e) => setDispatchForm({ ...dispatchForm, freightCost: e.target.value })}
+                    placeholder="e.g. 12000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Transporter / vendor (optional)</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                    value={dispatchForm.freightVendorName}
+                    onChange={(e) => setDispatchForm({ ...dispatchForm, freightVendorName: e.target.value })}
+                    placeholder="e.g. ABC Logistics"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Freight invoice reference (optional)</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                    value={dispatchForm.freightInvoiceRef}
+                    onChange={(e) => setDispatchForm({ ...dispatchForm, freightInvoiceRef: e.target.value })}
+                    placeholder="e.g. LR/INV number"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-[#0b69a3] focus:border-[#0b69a3]"
+                    rows={2}
+                    value={dispatchForm.freightNotes}
+                    onChange={(e) => setDispatchForm({ ...dispatchForm, freightNotes: e.target.value })}
+                    placeholder="Any details about freight cost…"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Dispatch Image <span className="text-red-500">*</span>
@@ -525,7 +585,7 @@ export default function OpsOrders() {
                 onClick={() => {
                   setShowDispatchModal(false);
                   setSelectedBatch(null);
-                  setDispatchForm({ committedMT: "", suppliedMT: "", dispatchImage: null });
+                  setDispatchForm({ committedMT: "", suppliedMT: "", freightCost: "", freightVendorName: "", freightInvoiceRef: "", freightNotes: "", dispatchImage: null });
                 }}
                 disabled={dispatching}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition"
@@ -728,11 +788,13 @@ function AcceptedOrderCard({ order, products, sites, onAddBatch, onStartBatch, o
                     {batch.batchMargin != null && (
                       <div className="text-xs text-gray-600">Margin: ₹{Number(batch.batchMargin).toLocaleString("en-IN")}</div>
                     )}
-                    {batch.invoice && (
+                    {batch.invoices?.length > 0 && (
                       <div className="mt-2 text-sm">
-                        <span className="text-gray-600">Invoice:</span>{" "}
+                        <span className="text-gray-600">Invoice{batch.invoices.length > 1 ? "s" : ""}:</span>{" "}
                         <span className="font-semibold text-gray-900">
-                          #{batch.invoice.number} · ₹{batch.invoice.totalAmount?.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                          {batch.invoices.map((inv) => `#${inv.number}`).join(", ")}
+                          {" · "}
+                          ₹{batch.invoices.reduce((s, i) => s + (i.totalAmount || 0), 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     )}

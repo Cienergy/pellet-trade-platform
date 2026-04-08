@@ -12,11 +12,10 @@ async function handler(req, res) {
   const where =
     session.role === "BUYER"
       ? {
-          batch: {
-            order: {
-              orgId: session.orgId,
-            },
-          },
+          OR: [
+            { batch: { order: { orgId: session.orgId } } },
+            { orgId: session.orgId },
+          ],
         }
       : {};
 
@@ -34,6 +33,7 @@ async function handler(req, res) {
           },
         },
       },
+      org: true,
       payments: true,
     },
   });

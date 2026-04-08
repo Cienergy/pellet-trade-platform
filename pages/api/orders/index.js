@@ -1,4 +1,5 @@
 import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
 import prisma from "../../../lib/prisma";
 import { logAudit } from "../../../lib/audit";
 import { canOrgPlaceNewOrder } from "../../../lib/creditCheck";
@@ -60,6 +61,7 @@ async function handler(req, res) {
       });
       await logAudit({
         actorId: session.userId,
+        req,
         entity: "order",
         entityId: order.id,
         action: "created",
@@ -69,6 +71,7 @@ async function handler(req, res) {
 
     await logAudit({
       actorId: session.userId,
+      req,
       entity: "order",
       entityId: order.id,
       action: "created",
@@ -92,9 +95,7 @@ async function handler(req, res) {
           include: {
             product: true,
             site: true,
-            invoice: {
-              include: { payments: true },
-            },
+            invoices: { include: { payments: true } },
           },
         },
         org: true,
@@ -109,12 +110,13 @@ async function handler(req, res) {
       const requestedMT = order.requestedQuantityMT || batchedMT; // Fallback to batched if not set
       const remainingMT = Math.max(0, requestedMT - batchedMT);
       
-      const totalAmount = order.batches.reduce((sum, b) => sum + (b.invoice?.totalAmount || 0), 0);
+      const totalAmount = order.batches.reduce((sum, b) => {
+        return sum + (b.invoices || []).reduce((s, inv) => s + (inv.totalAmount || 0), 0);
+      }, 0);
       const paidAmount = order.batches.reduce((sum, b) => {
-        if (!b.invoice?.payments) return sum;
-        return sum + b.invoice.payments
-          .filter(p => p.verified)
-          .reduce((pSum, p) => pSum + p.amount, 0);
+        return sum + (b.invoices || []).reduce((invSum, inv) => {
+          return invSum + (inv.payments || []).filter((p) => p.verified).reduce((pSum, p) => pSum + p.amount, 0);
+        }, 0);
       }, 0);
       const pendingAmount = totalAmount - paidAmount;
 
@@ -136,4 +138,4 @@ async function handler(req, res) {
   return res.status(405).end();
 }
 
-export default requireAuth(handler);
+export default requireAuth(requireRole(["BUYER", "OPS", "ADMIN"], handler));

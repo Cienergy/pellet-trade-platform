@@ -5,7 +5,9 @@ import requireRole from "../../../lib/requireRole";
 async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
-  const [pendingOrders, batches, inventoryUpdates] = await Promise.all([
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [pendingOrders, batches, inventoryUpdates, freightSum7d, freightMissing7d] = await Promise.all([
     prisma.order.count({
       where: { status: "CREATED" },
     }),
@@ -19,6 +21,13 @@ async function handler(req, res) {
         },
       },
     }),
+    prisma.orderBatch.aggregate({
+      where: { dispatchedAt: { gte: sevenDaysAgo }, freightCost: { not: null } },
+      _sum: { freightCost: true },
+    }),
+    prisma.orderBatch.count({
+      where: { dispatchedAt: { gte: sevenDaysAgo }, freightCost: null },
+    }),
   ]);
 
   const inProgressOrders = await prisma.order.count({
@@ -30,6 +39,10 @@ async function handler(req, res) {
     inProgressOrders,
     pendingBatches: batches,
     inventoryUpdates,
+    freight: {
+      sum7d: freightSum7d?._sum?.freightCost || 0,
+      missingCount7d: freightMissing7d || 0,
+    },
   });
 }
 

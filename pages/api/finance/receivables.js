@@ -5,6 +5,7 @@ import requireRole from "../../../lib/requireRole";
 const PAYMENT_TERM_DAYS = { NET_15: 15, NET_30: 30, NET_60: 60, NET_90: 90 };
 
 function getDueDate(invoice) {
+  if (invoice?.dueDateOverride) return new Date(invoice.dueDateOverride);
   if (!invoice?.createdAt) return null;
   const d = new Date(invoice.createdAt);
   d.setDate(d.getDate() + (PAYMENT_TERM_DAYS[invoice.paymentTerm] || 30));

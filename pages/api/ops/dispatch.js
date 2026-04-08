@@ -7,7 +7,17 @@ async function handler(req, res) {
   const session = req.session;
 
   if (req.method === "POST") {
-    const { batchId, committedMT, suppliedMT, dispatchImageUrl } = req.body;
+    const {
+      batchId,
+      committedMT,
+      suppliedMT,
+      dispatchImageUrl,
+      freightCost,
+      freightCurrency,
+      freightVendorName,
+      freightInvoiceRef,
+      freightNotes,
+    } = req.body;
 
     if (!batchId) {
       return res.status(400).json({ error: "batchId is required" });
@@ -50,6 +60,20 @@ async function handler(req, res) {
       updateData.leftFromSiteAt = new Date();
     }
 
+    if (freightCost !== undefined) {
+      const n = freightCost === "" || freightCost == null ? null : Number(freightCost);
+      if (n != null && (Number.isNaN(n) || n < 0)) {
+        return res.status(400).json({ error: "freightCost must be a number >= 0" });
+      }
+      updateData.freightCost = n;
+      updateData.freightCurrency = freightCurrency ? String(freightCurrency) : "INR";
+      updateData.freightVendorName = freightVendorName ? String(freightVendorName) : null;
+      updateData.freightInvoiceRef = freightInvoiceRef ? String(freightInvoiceRef) : null;
+      updateData.freightNotes = freightNotes ? String(freightNotes) : null;
+      updateData.freightEnteredAt = new Date();
+      updateData.freightEnteredBy = session.userId;
+    }
+
     const updatedBatch = await prisma.orderBatch.update({
       where: { id: batchId },
       data: updateData,
@@ -64,17 +88,28 @@ async function handler(req, res) {
 
     await logAudit({
       actorId: session.userId,
+      req,
       entity: "orderBatch",
       entityId: batchId,
       action: "dispatched",
     });
+
+    if (freightCost !== undefined) {
+      await logAudit({
+        actorId: session.userId,
+        req,
+        entity: "orderBatch",
+        entityId: batchId,
+        action: "freight_updated",
+      });
+    }
 
     return res.status(200).json(updatedBatch);
   }
 
   if (req.method === "PATCH") {
     // Update committed/supplied volumes manually
-    const { batchId, committedMT, suppliedMT } = req.body;
+    const { batchId, committedMT, suppliedMT, freightCost, freightCurrency, freightVendorName, freightInvoiceRef, freightNotes } = req.body;
 
     if (!batchId) {
       return res.status(400).json({ error: "batchId is required" });
@@ -87,6 +122,19 @@ async function handler(req, res) {
     if (suppliedMT !== undefined) {
       updateData.suppliedMT = Number(suppliedMT);
     }
+    if (freightCost !== undefined) {
+      const n = freightCost === "" || freightCost == null ? null : Number(freightCost);
+      if (n != null && (Number.isNaN(n) || n < 0)) {
+        return res.status(400).json({ error: "freightCost must be a number >= 0" });
+      }
+      updateData.freightCost = n;
+      updateData.freightCurrency = freightCurrency ? String(freightCurrency) : "INR";
+      updateData.freightVendorName = freightVendorName ? String(freightVendorName) : null;
+      updateData.freightInvoiceRef = freightInvoiceRef ? String(freightInvoiceRef) : null;
+      updateData.freightNotes = freightNotes ? String(freightNotes) : null;
+      updateData.freightEnteredAt = new Date();
+      updateData.freightEnteredBy = session.userId;
+    }
 
     const updatedBatch = await prisma.orderBatch.update({
       where: { id: batchId },
@@ -102,10 +150,21 @@ async function handler(req, res) {
 
     await logAudit({
       actorId: session.userId,
+      req,
       entity: "orderBatch",
       entityId: batchId,
       action: "volume_updated",
     });
+
+    if (freightCost !== undefined) {
+      await logAudit({
+        actorId: session.userId,
+        req,
+        entity: "orderBatch",
+        entityId: batchId,
+        action: "freight_updated",
+      });
+    }
 
     return res.status(200).json(updatedBatch);
   }

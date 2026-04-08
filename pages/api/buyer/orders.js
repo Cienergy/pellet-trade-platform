@@ -1,12 +1,9 @@
 import { prisma } from "../../../lib/prisma";
 import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
 
 async function handler(req, res) {
   const session = req.session;
-
-  if (session.role !== "BUYER") {
-    return res.status(403).json({ error: "Forbidden" });
-  }
 
   const orders = await prisma.order.findMany({
     where: {
@@ -20,11 +17,7 @@ async function handler(req, res) {
       batches: {
         include: {
           product: true,
-          invoice: {
-            include: {
-              payments: true,
-            },
-          },
+          invoices: { include: { payments: true } },
           site: true,
         },
       },
@@ -39,48 +32,66 @@ async function handler(req, res) {
     const requestedMT = order.requestedQuantityMT || batchedMT; // Fallback if not set
     const remainingMT = Math.max(0, requestedMT - batchedMT);
 
-    const batches = order.batches.map((b) => ({
-      id: b.id,
-      product: {
-        name: b.product.name,
-        pricePMT: b.product.pricePMT,
-      },
-      site: b.site?.name || "—",
-      quantityMT: b.quantityMT,
-      deliveryAt: b.deliveryAt,
-      status: b.status,
+    const batches = order.batches.map((b) => {
+      const invs = b.invoices || [];
+      const primary = invs[0] || null;
+      return {
+        id: b.id,
+        product: { name: b.product.name, pricePMT: b.product.pricePMT },
+        site: b.site?.name || "—",
+        quantityMT: b.quantityMT,
+        deliveryAt: b.deliveryAt,
+        status: b.status,
+        invoices: invs.map((inv) => ({
+          id: inv.id,
+          number: inv.number,
+          invoiceType: inv.invoiceType,
+          subtotal: inv.subtotal,
+          gstRate: inv.gstRate,
+          gstAmount: inv.gstAmount,
+          totalAmount: inv.totalAmount,
+          total: inv.totalAmount,
+          status: inv.status,
+          paymentTerm: inv.paymentTerm || "NET_30",
+          createdAt: inv.createdAt,
+          payments: (inv.payments || []).map((p) => ({
+            id: p.id,
+            amount: p.amount,
+            mode: p.mode,
+            verified: p.verified,
+            proofUrl: p.proofUrl,
+          })),
+        })),
+        invoice: primary
+          ? {
+              id: primary.id,
+              number: primary.number,
+              subtotal: primary.subtotal,
+              gstRate: primary.gstRate,
+              gstAmount: primary.gstAmount,
+              totalAmount: primary.totalAmount,
+              total: primary.totalAmount,
+              status: primary.status,
+              paymentTerm: primary.paymentTerm || "NET_30",
+              createdAt: primary.createdAt,
+              payments: (primary.payments || []).map((p) => ({
+                id: p.id,
+                amount: p.amount,
+                mode: p.mode,
+                verified: p.verified,
+                proofUrl: p.proofUrl,
+              })),
+            }
+          : null,
+      };
+    });
 
-      invoice: b.invoice
-        ? {
-            id: b.invoice.id,
-            number: b.invoice.number,
-            subtotal: b.invoice.subtotal,
-            gstRate: b.invoice.gstRate,
-            gstAmount: b.invoice.gstAmount,
-            totalAmount: b.invoice.totalAmount,
-            total: b.invoice.totalAmount, // Keep for backward compatibility
-            status: b.invoice.status,
-            paymentTerm: b.invoice.paymentTerm || "NET_30",
-            createdAt: b.invoice.createdAt,
-            payments: b.invoice.payments.map((p) => ({
-              id: p.id,
-              amount: p.amount,
-              mode: p.mode,
-              verified: p.verified,
-              proofUrl: p.proofUrl,
-            })),
-          }
-        : null,
-    }));
-
-    // Calculate amounts
     const totalMT = batches.reduce((sum, b) => sum + b.quantityMT, 0);
-    const invoicedAmount = batches.reduce((sum, b) => sum + (b.invoice?.total || 0), 0); // Amount raised/invoiced
+    const invoicedAmount = batches.reduce((sum, b) => sum + (b.invoices || []).reduce((s, inv) => s + (inv.totalAmount || 0), 0), 0);
     const paidAmount = batches.reduce((sum, b) => {
-      if (!b.invoice?.payments) return sum;
-      return sum + b.invoice.payments
-        .filter(p => p.verified)
-        .reduce((pSum, p) => pSum + p.amount, 0);
+      return sum + (b.invoices || []).reduce((invSum, inv) => {
+        return invSum + (inv.payments || []).filter((p) => p.verified).reduce((pSum, p) => pSum + p.amount, 0);
+      }, 0);
     }, 0);
     
     // Calculate full PO amount (requested quantity * price * 1.05 for GST)
@@ -125,4 +136,4 @@ async function handler(req, res) {
   return res.status(200).json(response);
 }
 
-export default requireAuth(handler);
+export default requireAuth(requireRole("BUYER", handler));

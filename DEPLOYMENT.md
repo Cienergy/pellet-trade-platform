@@ -41,13 +41,14 @@ For serverless, prefer a **pooled** URL if your provider offers one (e.g. Neon�
 
    Apply to **Production** (and Preview if you want).
 
-4. **Build settings** (usually auto-detected):
+4. **Build settings** (recommended for this repo):
 
-   - **Build Command:** `npm run build` (or leave default; the app uses `prisma generate && next build`).
+   - **Build Command:** `npm run vercel-build` — runs `prisma generate`, **`prisma migrate deploy`**, then `next build`, so the database schema stays in sync on every deploy. (Requires `DATABASE_URL` in Vercel and a DB reachable from Vercel’s build network.)
+   - If you use **`npm run build`** instead, migrations are **not** applied automatically; you must run `npx prisma migrate deploy` manually against production (see §3).
    - **Output:** Next.js.
    - **Install Command:** `npm install`.
 
-5. **Deploy.** Vercel will run `npm run build`. Migrations are **not** run at build time (no DB in build env).
+5. **Deploy.** After setting the build command above, redeploy. If you skipped migrate-on-build, run §3 after deploy.
 
 ---
 
@@ -116,6 +117,7 @@ This runs migrations during build; your production DB must be reachable from Ver
 
 | Issue | What to do |
 |-------|------------|
+| **`P2022` / column `Invoice.orgId` does not exist** | Schema is ahead of the DB. Run `npx prisma migrate deploy` with production `DATABASE_URL`, or apply `scripts/fix-invoice-org-id.sql` in your SQL console, then redeploy. Also set Vercel **Build Command** to `npm run vercel-build` so future migrations apply automatically. |
 | Build fails on Prisma | Ensure **DATABASE_URL** is set for Production (and that **Build Command** runs `prisma generate`). |
 | 500 / DB errors at runtime | Run `npx prisma migrate deploy` with production **DATABASE_URL**; check DB is reachable from Vercel (no strict IP allowlist blocking Vercel). |
 | “Receipt service not configured” | Optional: set **SUPABASE_URL** and **SUPABASE_SERVICE_ROLE_KEY** if you use the Supabase-backed receipt route. |

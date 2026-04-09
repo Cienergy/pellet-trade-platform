@@ -10,7 +10,7 @@ async function handler(req, res) {
     const topBuyers = await prisma.order.groupBy({
       by: ["orgId"],
       _count: { id: true },
-      _sum: { quantityMT: true },
+      _sum: { requestedQuantityMT: true },
       orderBy: { _count: { id: "desc" } },
       take: 5,
     });
@@ -23,7 +23,7 @@ async function handler(req, res) {
         return {
           orgName: org?.name || "Unknown",
           orderCount: buyer._count.id,
-          totalMT: buyer._sum.quantityMT || 0,
+          totalMT: buyer._sum.requestedQuantityMT || 0,
         };
       })
     );

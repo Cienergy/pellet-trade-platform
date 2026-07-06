@@ -173,4 +173,3 @@ Timeline events are derived from persisted fields:
 Performance metrics include days from batch creation to scheduled delivery,
 whether the batch left site on or before the scheduled delivery date, and transit
 days from `leftFromSiteAt` to `deliveryAt`.
-

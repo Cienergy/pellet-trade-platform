@@ -1,23 +1,27 @@
 import prisma from "../../../lib/prisma";
+import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
+import { logAudit } from "../../../lib/audit";
 
 /**
- * Legacy batch create route. For full batch creation (with siteId, createdBy, inventory)
- * use POST /api/orders/[orderId]/batches instead.
+ * Legacy batch create route. Prefer POST /api/orders/[orderId]/batches.
+ * Restricted to OPS/ADMIN — unauthenticated access was a security issue.
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { orderId, productId, siteId, quantityMT, deliveryAt, createdBy } = req.body;
+  const session = req.session;
 
   if (!orderId || !productId || !quantityMT) {
     return res.status(400).json({ error: "Missing required fields: orderId, productId, quantityMT" });
   }
 
-  if (!siteId || !createdBy) {
+  if (!siteId) {
     return res.status(400).json({
-      error: "siteId and createdBy are required. Prefer POST /api/orders/[orderId]/batches for batch creation.",
+      error: "siteId is required. Prefer POST /api/orders/[orderId]/batches for batch creation.",
     });
   }
 
@@ -29,12 +33,13 @@ export default async function handler(req, res) {
         siteId,
         quantityMT: Number(quantityMT),
         deliveryAt: deliveryAt ? new Date(deliveryAt) : null,
-        createdBy,
+        createdBy: createdBy || session.userId,
       },
     });
 
-    const { logAudit } = await import("../../../lib/audit");
     await logAudit({
+      actorId: session.userId,
+      req,
       entity: "orderBatch",
       entityId: batch.id,
       action: "created",
@@ -46,3 +51,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message || "Failed to create batch" });
   }
 }
+
+export default requireAuth(requireRole(["ADMIN", "OPS"], handler));

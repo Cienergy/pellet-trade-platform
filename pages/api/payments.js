@@ -1,6 +1,8 @@
 import requireAuth from "../../lib/requireAuth";
+import requireRole from "../../lib/requireRole";
 import prisma from "../../lib/prisma";
 import { logAudit } from "../../lib/audit";
+import { buyerCanAccessInvoice } from "../../lib/invoiceAccess";
 
 async function handler(req, res) {
   if (req.method !== "POST") {
@@ -16,10 +18,10 @@ async function handler(req, res) {
     });
   }
 
-  // Fetch invoice to validate payment amount
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
     include: {
+      batch: { include: { order: true } },
       payments: {
         where: { verified: true },
       },
@@ -30,12 +32,14 @@ async function handler(req, res) {
     return res.status(404).json({ error: "Invoice not found" });
   }
 
-  // Calculate remaining amount
+  if (!buyerCanAccessInvoice(session, invoice)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
   const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0);
   const remainingAmount = invoice.totalAmount - totalPaid;
   const paymentAmount = Number(amount);
 
-  // Enforce exact payment amount (NET_30, NET_60, NET_90 - must pay exact remaining amount)
   if (Math.abs(paymentAmount - remainingAmount) > 0.01) {
     return res.status(400).json({
       error: `Payment amount must be exactly ₹${remainingAmount.toFixed(2)} (remaining amount). Payment terms: ${invoice.paymentTerm?.replace("NET_", "Net ") || "Net 30"}. No partial or excess payments allowed.`,
@@ -60,12 +64,13 @@ async function handler(req, res) {
       amount: paymentAmount,
       mode,
       proofUrl,
-      verified: session.role !== "BUYER", // Auto-verify if not buyer
+      verified: false,
     },
   });
 
   await logAudit({
     actorId: session.userId,
+    req,
     entity: "payment",
     entityId: payment.id,
     action: "created",
@@ -74,4 +79,4 @@ async function handler(req, res) {
   return res.status(201).json(payment);
 }
 
-export default requireAuth(handler);
+export default requireAuth(requireRole("BUYER", handler));

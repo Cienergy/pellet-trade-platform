@@ -9,7 +9,7 @@ async function handler(req, res) {
 
   const [pendingOrders, batches, inventoryUpdates, freightSum7d, freightMissing7d] = await Promise.all([
     prisma.order.count({
-      where: { status: "CREATED" },
+      where: { status: "PENDING_APPROVAL" },
     }),
     prisma.orderBatch.count({
       where: { status: "CREATED" },

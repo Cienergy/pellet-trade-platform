@@ -60,7 +60,10 @@ export default function OrderCard({ order, onRepeatOrder }) {
     return order.status.replace(/_/g, " ");
   };
 
-  const canRepeat = typeof onRepeatOrder === "function" && typeof order?.id === "string" && order.status !== "REJECTED";
+  const canRepeat =
+    typeof onRepeatOrder === "function" &&
+    typeof order?.id === "string" &&
+    order.status !== "REJECTED";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
@@ -123,7 +126,7 @@ export default function OrderCard({ order, onRepeatOrder }) {
                 <button
                   type="button"
                   onClick={() => onRepeatOrder(order.id)}
-                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition"
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-900 shadow-sm hover:bg-slate-50 hover:border-slate-400 transition"
                 >
                   Repeat order
                 </button>

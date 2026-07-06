@@ -1,6 +1,7 @@
 import prisma from "../../../../lib/prisma";
 import requireAuth from "../../../../lib/requireAuth";
 import requireRole from "../../../../lib/requireRole";
+import { logAudit } from "../../../../lib/audit";
 
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -57,13 +58,12 @@ async function handler(req, res) {
     }
   }
 
-  await prisma.auditLog.create({
-    data: {
-      entity: "payment",
-      entityId: payment.id,
-      action: approve !== false ? "verified" : "rejected",
-      actorId: session.userId,
-    },
+  await logAudit({
+    actorId: session.userId,
+    req,
+    entity: "payment",
+    entityId: payment.id,
+    action: approve !== false ? "verified" : "rejected",
   });
 
   return res.json(updatedPayment);

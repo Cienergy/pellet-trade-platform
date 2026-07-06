@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
@@ -110,8 +110,8 @@ export default function AdminActivityLog() {
                 </thead>
                 <tbody>
                   {(Array.isArray(logs) ? logs : []).map((log) => (
-                    <>
-                      <tr key={log.id} className="border-b border-gray-100 align-top">
+                    <Fragment key={log.id}>
+                      <tr className="border-b border-gray-100 align-top">
                         <td className="p-3 text-gray-600 whitespace-nowrap">
                           {log.createdAt ? new Date(log.createdAt).toLocaleString() : "—"}
                         </td>
@@ -163,7 +163,7 @@ export default function AdminActivityLog() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

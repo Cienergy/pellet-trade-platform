@@ -117,7 +117,7 @@ This runs migrations during build; your production DB must be reachable from Ver
 
 | Issue | What to do |
 |-------|------------|
-| **`P2022` / column `Invoice.orgId` does not exist** | Schema is ahead of the DB. Run `npx prisma migrate deploy` with production `DATABASE_URL`, or apply `scripts/fix-invoice-org-id.sql` in your SQL console, then redeploy. Also set Vercel **Build Command** to `npm run vercel-build` so future migrations apply automatically. |
+| **`P2022` / missing `Invoice.*` column** (e.g. `orgId`, `invoiceType`, …) | Schema is ahead of the DB. Run `npx prisma migrate deploy` with production `DATABASE_URL`, or apply `scripts/fix-invoice-schema-drift.sql` in your SQL console, then redeploy. Set Vercel **Build Command** to `npm run vercel-build` so migrations apply on deploy. |
 | Build fails on Prisma | Ensure **DATABASE_URL** is set for Production (and that **Build Command** runs `prisma generate`). |
 | 500 / DB errors at runtime | Run `npx prisma migrate deploy` with production **DATABASE_URL**; check DB is reachable from Vercel (no strict IP allowlist blocking Vercel). |
 | “Receipt service not configured” | Optional: set **SUPABASE_URL** and **SUPABASE_SERVICE_ROLE_KEY** if you use the Supabase-backed receipt route. |

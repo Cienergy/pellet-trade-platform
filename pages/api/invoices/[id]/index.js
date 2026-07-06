@@ -2,6 +2,7 @@ import prisma from "../../../../lib/prisma";
 import requireAuth from "../../../../lib/requireAuth";
 import requireRole from "../../../../lib/requireRole";
 import { logAudit } from "../../../../lib/audit";
+import { buyerCanAccessInvoice } from "../../../../lib/invoiceAccess";
 
 async function handler(req, res) {
   const session = req.session;
@@ -64,11 +65,8 @@ async function handler(req, res) {
   }
 
   // Authorization: Buyers can only access invoices for their organization
-  if (session.role === "BUYER") {
-    const orgId = invoice.batch?.order?.orgId;
-    if (!orgId || orgId !== session.orgId) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
+  if (!buyerCanAccessInvoice(session, invoice)) {
+    return res.status(403).json({ error: "Forbidden" });
   }
 
   // Calculate payment status

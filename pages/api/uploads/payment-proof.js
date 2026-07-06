@@ -2,6 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
 import requireAuth from "../../../lib/requireAuth";
+import requireRole from "../../../lib/requireRole";
+import prisma from "../../../lib/prisma";
+import { buyerCanAccessInvoice } from "../../../lib/invoiceAccess";
 
 export const config = {
   api: { bodyParser: false },
@@ -35,6 +38,18 @@ async function handler(req, res) {
     if (!invoiceId || !file) {
       console.error("Missing invoiceId or file", { invoiceId, file });
       return res.status(400).json({ error: "invoiceId and file required" });
+    }
+
+    const session = req.session;
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: String(invoiceId) },
+      include: { batch: { include: { order: true } } },
+    });
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+    if (!buyerCanAccessInvoice(session, invoice)) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     // Check if filepath exists
@@ -78,4 +93,4 @@ async function handler(req, res) {
   });
 }
 
-export default requireAuth(handler);
+export default requireAuth(requireRole("BUYER", handler));

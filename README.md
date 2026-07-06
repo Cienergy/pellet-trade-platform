@@ -10,7 +10,7 @@ A full-featured pellet trading platform for buyers, operations, finance, and adm
 
 - Browse products by region and feedstock; place orders with requested quantity and delivery location.
 - Track order status (Created → Pending Approval → Accepted → In Progress → Completed).
-- View batches, invoices, and payment due dates; upload payment proof and pay against **Net 30 / Net 60 / Net 90** terms only.
+- View batches, invoices, and payment due dates; upload payment proof for invoices using **Net 15 / Net 30 / Net 60 / Net 90** terms.
 - View consumption patterns (order history, product breakdown, monthly trends).
 
 ### Operations (Ops)
@@ -24,7 +24,7 @@ A full-featured pellet trading platform for buyers, operations, finance, and adm
 ### Finance
 
 - Generate invoices with **GST at transaction value** (Quantity × Price); auto **CGST/SGST** (intra-state) or **IGST** (inter-state); immutable tax fields; sync to ERP when finalized.
-- **Payment terms**: Net 30, Net 60, Net 90 only; **default payment term per buyer** (Organization) used when creating invoices.
+- **Payment terms**: Net 15, Net 30, Net 60, Net 90; **default payment term and payment mode per buyer** (Organization) used when creating invoices.
 - **Receivables & aging**: overdue count/amount, due-in-7-days, aging buckets (0–30, 31–60, 61–90, 90+ days).
 - **Sales reports**: period summary (by product, by buyer, monthly); **orders export (CSV)** by date range.
 - **Activity log**: view user and system actions (entity, action, actor, time).
@@ -41,7 +41,7 @@ A full-featured pellet trading platform for buyers, operations, finance, and adm
 ### Platform behaviour
 
 - **Order completion**: order is marked Completed only when all batches are completed **and** total batched quantity ≥ requested quantity.
-- **Payment**: only Net 30 / Net 60 / Net 90; buyer can pay only the invoice amount (no partial arbitrary amounts).
+- **Payment**: Net 15 / Net 30 / Net 60 / Net 90 terms; buyer can pay only the invoice remaining amount (no partial arbitrary amounts).
 - **Audit**: login, order accept/reject, batch create/complete, dispatch, invoice create, payment verify, contract create, org margin/terms updates.
 
 ---
@@ -84,6 +84,13 @@ pellet-trade-platform/
 │   └── migrations/
 └── package.json
 ```
+
+---
+
+## Internal documentation
+
+- **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
+- **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
 
 ---
 
@@ -138,6 +145,7 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 | Orders     | POST   | `/api/orders/[id]/accept` | Ops accept order |
 | Orders     | POST   | `/api/orders/[id]/reject` | Ops reject order |
 | Batches    | POST   | `/api/orders/[orderId]/batches` | Create batch |
+| Batches    | PATCH  | `/api/batches/[batchId]/start` | Start processing after payment approval |
 | Batches    | PATCH  | `/api/batches/[batchId]/complete` | Mark batch complete (dispatch) |
 | Batches    | PATCH  | `/api/batches/[batchId]` | Update batchMargin, eWayBill |
 | Batches    | GET    | `/api/batches/[batchId]/challan` | Delivery challan PDF |
@@ -145,6 +153,8 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 | Ops        | POST   | `/api/ops/dispatch` | Set dispatch image, committed/supplied |
 | Invoices   | POST   | `/api/invoices/create` | Create invoice (GST, default payment term from org) |
 | Invoices   | GET    | `/api/invoices/[id]/pdf` | Invoice PDF |
+| Payments   | POST   | `/api/payments` | Buyer payment proof for exact remaining invoice amount |
+| Payments   | POST   | `/api/payments/[paymentId]/verify` | Finance/Admin payment verification |
 | Finance    | GET    | `/api/finance/dashboard` | KPIs including overdue, due-in-7-days |
 | Finance    | GET    | `/api/finance/receivables` | Overdue list + aging buckets |
 | Finance    | GET    | `/api/finance/sales-report` | Sales summary (from, to) |
@@ -156,9 +166,11 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 
 ## Payment terms
 
-- Only **Net 30**, **Net 60**, and **Net 90** are allowed.
+- **Net 15**, **Net 30**, **Net 60**, and **Net 90** are allowed.
 - Each buyer (Organization) can have a **default payment term**; invoice creation uses it when no term is supplied.
-- Buyers pay the **exact invoice amount** (no arbitrary partial amounts) per invoice.
+- Each buyer can also have a **default payment mode**: `NET_TERMS`, `ADVANCE_BALANCE`, `PAY_BEFORE_DISPATCH`, or `STANDARD`.
+- Buyers pay the **exact remaining invoice amount** (no arbitrary partial amounts) per invoice.
+- See **[Order lifecycle](./docs/order-lifecycle.md)** for the batch auto-invoice rules and payment gates.
 
 ---
 

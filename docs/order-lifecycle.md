@@ -3,6 +3,8 @@
 This page documents the order, batch, invoice, payment, and dispatch flow as
 implemented in the API handlers. Treat it as the engineering reference when
 changing status transitions, payment gates, or Ops/Finance workflows.
+For buyer policy fields, proof uploads, security deposits, and payment
+verification details, see [Invoice payments and buyer finance policy](./invoice-payments.md).
 
 ## Source of truth
 

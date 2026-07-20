@@ -90,6 +90,7 @@ pellet-trade-platform/
 ## Internal documentation
 
 - **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
+- **[Invoice payments and buyer finance policy](./docs/invoice-payments.md)**: buyer policy fields, invoice shapes, proof uploads, verification gates, security deposits, and credit/overdue checks.
 - **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
 
 ---
@@ -170,7 +171,7 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 - Each buyer (Organization) can have a **default payment term**; invoice creation uses it when no term is supplied.
 - Each buyer can also have a **default payment mode**: `NET_TERMS`, `ADVANCE_BALANCE`, `PAY_BEFORE_DISPATCH`, or `STANDARD`.
 - Buyers pay the **exact remaining invoice amount** (no arbitrary partial amounts) per invoice.
-- See **[Order lifecycle](./docs/order-lifecycle.md)** for the batch auto-invoice rules and payment gates.
+- See **[Invoice payments and buyer finance policy](./docs/invoice-payments.md)** for policy fields, security deposits, proof uploads, and verification gates.
 
 ---
 

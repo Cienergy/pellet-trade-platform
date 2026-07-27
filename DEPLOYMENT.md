@@ -18,7 +18,7 @@ Vercel does not run a database. Use one of:
 Create a database and get a **connection string** (e.g. `postgresql://user:pass@host:5432/dbname`).  
 For serverless, prefer a **pooled** URL if your provider offers one (e.g. Neon’s pooled connection) to avoid exhausting connections.
 
-### Optional: Supabase (for uploads and receipt)
+### Optional: Supabase (for uploads)
 
 - For **dispatch image** and **payment proof** uploads: create a Supabase project, add Storage buckets **`dispatch-images`** and **`payment-proof`** (public read), and get:
   - **SUPABASE_URL** (e.g. `https://xxxx.supabase.co`)
@@ -117,10 +117,10 @@ This runs migrations during build; your production DB must be reachable from Ver
 
 | Issue | What to do |
 |-------|------------|
-| **`P2022` / missing `Invoice.*` column** (e.g. `orgId`, `invoiceType`, …) | Schema is ahead of the DB. Run `npx prisma migrate deploy` with production `DATABASE_URL`, or apply `scripts/fix-invoice-schema-drift.sql` in your SQL console, then redeploy. Set Vercel **Build Command** to `npm run vercel-build` so migrations apply on deploy. |
+| **`P2022` / missing `Invoice.*` column** (e.g. `orgId`, `invoiceType`, …) | Schema is ahead of the DB. Run `npx prisma migrate deploy` with production `DATABASE_URL`, or apply `scripts/fix-invoice-schema-drift.sql` in your SQL console, then redeploy. Set Vercel **Build Command** to `npm run vercel-build` so migrations apply on deploy. See `docs/invoice-payments.md` for the invoice/payment fields that depend on these columns. |
 | Build fails on Prisma | Ensure **DATABASE_URL** is set for Production (and that **Build Command** runs `prisma generate`). |
 | 500 / DB errors at runtime | Run `npx prisma migrate deploy` with production **DATABASE_URL**; check DB is reachable from Vercel (no strict IP allowlist blocking Vercel). |
-| “Receipt service not configured” | Optional: set **SUPABASE_URL** and **SUPABASE_SERVICE_ROLE_KEY** if you use the Supabase-backed receipt route. |
+| Receipt endpoint returns `410` | The legacy receipt endpoints are disabled; use in-app invoice/payment views and invoice PDFs. |
 | “Bucket not found” for images | Create **`dispatch-images`** (and **`payment-proof`** if used) in Supabase Storage and set them to public. |
 | Too many DB connections | Use a **pooled** connection string (e.g. Neon pooled URL) for **DATABASE_URL**. |
 

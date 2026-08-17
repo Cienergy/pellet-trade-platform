@@ -91,6 +91,7 @@ pellet-trade-platform/
 
 - **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
 - **[RBAC policy](./docs/rbac.md)**: session behavior, role gates, buyer organization scoping, and payment/invoice ownership rules.
+- **[Finance policies](./docs/finance-policies.md)**: credit/overdue gates, buyer payment policy fields, security deposits, credit notes, refunds, and dunning behavior.
 
 ---
 

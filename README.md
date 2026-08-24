@@ -90,6 +90,7 @@ pellet-trade-platform/
 ## Internal documentation
 
 - **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
+- **[Finance policies and receivables](./docs/finance-policies.md)**: organization payment policy fields, receivables, credit notes, refunds, dunning, and security deposit invoices.
 - **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
 
 ---

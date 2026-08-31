@@ -29,10 +29,11 @@ A full-featured pellet trading platform for buyers, operations, finance, and adm
 - **Sales reports**: period summary (by product, by buyer, monthly); **orders export (CSV)** by date range.
 - **Activity log**: view user and system actions (entity, action, actor, time).
 - Verify payment proofs; download invoice PDFs.
+- Issue credit notes, track refunds, and log dunning reminders for overdue invoices.
 
 ### Admin
 
-- Manage **buyers (organizations)**: name, GST, state; **buyer-level margin** and **default payment term**; optional **credit limit** placeholder.
+- Manage **buyers (organizations)**: name, GST, state; buyer-level margin; payment terms/modes; advance, early-pay discount, retention, security-deposit, credit-limit, and overdue-block policies.
 - **Batch-level margin** and **e-way bill** placeholders on batches.
 - **Contracts**: pricing models (no automated enforcement); link org/product, price per MT, dates.
 - **Activity log**: filter by entity/action; used for audits and policy design.
@@ -89,8 +90,8 @@ pellet-trade-platform/
 
 ## Internal documentation
 
-- **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
-- **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
+- **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, finance policy, credit, adjustment, and dispatch workflows.
+- **[RBAC policy](./docs/rbac.md)**: role gates, session-slot behavior, and buyer organization scoping rules.
 
 ---
 
@@ -159,8 +160,13 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 | Finance    | GET    | `/api/finance/receivables` | Overdue list + aging buckets |
 | Finance    | GET    | `/api/finance/sales-report` | Sales summary (from, to) |
 | Finance    | GET    | `/api/finance/orders/export` | Orders CSV (from, to, status) |
+| Finance    | GET/POST | `/api/finance/credit-notes` | List / issue invoice credit notes |
+| Finance    | POST   | `/api/finance/refunds` | Create refund against a credit note |
+| Finance    | PATCH  | `/api/finance/refunds/[refundId]` | Mark refund processed or failed |
+| Finance    | POST   | `/api/finance/dunning-reminder` | Log dunning reminder for an invoice |
 | Admin      | GET    | `/api/admin/activity-log` | Activity log (entity, action filters) |
-| Admin      | PATCH  | `/api/admin/organizations/[id]` | Update buyer margin, defaultPaymentTerm, creditLimit |
+| Admin      | PATCH  | `/api/admin/organizations/[id]` | Update buyer commercial policy fields |
+| Admin      | POST   | `/api/admin/organizations/[id]/security-deposit-invoice` | Create standalone security deposit invoice |
 
 ---
 
@@ -170,7 +176,7 @@ Open [http://localhost:3000](http://localhost:3000). Log in with a user that has
 - Each buyer (Organization) can have a **default payment term**; invoice creation uses it when no term is supplied.
 - Each buyer can also have a **default payment mode**: `NET_TERMS`, `ADVANCE_BALANCE`, `PAY_BEFORE_DISPATCH`, or `STANDARD`.
 - Buyers pay the **exact remaining invoice amount** (no arbitrary partial amounts) per invoice.
-- See **[Order lifecycle](./docs/order-lifecycle.md)** for the batch auto-invoice rules and payment gates.
+- See **[Order lifecycle](./docs/order-lifecycle.md)** for batch auto-invoice rules, payment gates, finance policy effects, credit notes, refunds, and security-deposit invoices.
 
 ---
 

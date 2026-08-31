@@ -14,6 +14,9 @@ changing status transitions, payment gates, or Ops/Finance workflows.
 | Ops batch create and auto-invoice | `pages/api/orders/[orderId]/batches.js` |
 | Buyer payment proof | `pages/api/payments.js` |
 | Finance payment verification | `pages/api/payments/[paymentId]/verify.js` |
+| Finance adjustments | `pages/api/finance/credit-notes.js`, `pages/api/finance/refunds.js`, `pages/api/finance/refunds/[refundId].js` |
+| Dunning reminders | `pages/api/finance/dunning-reminder.js` |
+| Security deposit invoices | `pages/api/admin/organizations/[id]/security-deposit-invoice.js` |
 | Ops start processing | `pages/api/batches/[batchId]/start.js` |
 | Ops dispatch metadata | `pages/api/ops/dispatch.js` |
 | Ops batch completion | `pages/api/batches/[batchId]/complete.js` |
@@ -128,6 +131,23 @@ Payment term selection:
 - Manual Finance invoice creation also accepts those four terms and prevents a
   second invoice for a batch that already has one.
 
+## Finance policy fields
+
+Buyer commercial policy is stored on `Organization` and copied into invoices at
+creation time where applicable. Updating an organization does not recalculate
+existing invoice totals or terms.
+
+| Field | Set by | Runtime effect |
+| --- | --- | --- |
+| `defaultPaymentTerm` | Admin buyer management | Sets invoice `paymentTerm` when valid; falls back to `NET_30`. |
+| `defaultPaymentMode` | Admin buyer management | Drives batch auto-invoice shape: advance/balance split, pay-before-dispatch due date override, or one standard invoice. |
+| `advancePercent` | Admin buyer management | Used only with `ADVANCE_BALANCE` and only when greater than 0 and less than 100. Creates separate `ADVANCE` and `BALANCE` invoices. |
+| `earlyPayDiscountPercent`, `earlyPayDiscountDays` | Admin buyer management | Copied to invoices and printed on PDFs. `POST /api/payments` still requires the exact remaining invoice amount; it does not apply the discount. |
+| `retentionPercent`, `retentionDays` | Admin buyer management | Copied to invoices and printed on PDFs with `retentionDueDate` when the handler can derive a delivery date. It does not reduce the payment amount gate. |
+| `securityDepositAmount` | Admin buyer management | Default amount for creating a standalone `SECURITY_DEPOSIT` invoice for the buyer organization. |
+| `creditLimit` | Admin buyer management | Blocks buyer order creation and Ops batch creation when outstanding non-security-deposit invoice balance exceeds the limit. |
+| `blockNewOrdersIfOverdue` | Admin buyer management | Blocks buyer order creation and Ops batch creation when the buyer has overdue non-security-deposit invoices. |
+
 ## Payment gates
 
 | Batch invoice shape | Requirement before `PATCH /api/batches/[batchId]/start` |
@@ -156,6 +176,30 @@ when either rule applies:
 
 Due dates use `Invoice.dueDateOverride` when present; otherwise they are derived
 from `createdAt + paymentTerm`.
+
+Security deposit invoices are excluded from credit and overdue gates because
+those checks only read batch-linked invoices with `invoiceType != SECURITY_DEPOSIT`.
+
+## Finance adjustments and reminders
+
+Credit notes, refunds, dunning reminders, and security deposits are separate
+Finance/Admin workflows from batch processing:
+
+- `POST /api/finance/credit-notes` issues a credit note for an invoice with
+  status `ISSUED`. The handler records amount, reason, creator, and audit log.
+- `POST /api/finance/refunds` creates a `PENDING` refund against a credit note.
+  It rejects a refund when processed refunds plus the new amount would exceed
+  the credit note amount.
+- `PATCH /api/finance/refunds/[refundId]` marks a refund `PROCESSED` or
+  `FAILED`; only `PROCESSED` refunds count against the credit note refund cap.
+- Credit notes and refunds are included when fetching invoice detail, but
+  receivables, credit checks, and buyer payment creation calculate outstanding
+  amount from verified payments only.
+- `POST /api/finance/dunning-reminder` records an audit-log reminder for an
+  invoice. It does not send email or change invoice status.
+- `POST /api/admin/organizations/[id]/security-deposit-invoice` creates a
+  standalone `SECURITY_DEPOSIT` invoice with `orgId` and no `batchId`. The
+  invoice uses GST rate 0, `NET_15`, and an `SD-YYYYMM-###` number.
 
 ## Dispatch timeline
 

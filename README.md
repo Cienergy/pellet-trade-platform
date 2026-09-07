@@ -90,7 +90,7 @@ pellet-trade-platform/
 ## Internal documentation
 
 - **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
-- **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
+- **[RBAC policy](./docs/rbac.md)**: auth/session model, role gates, session-slot demo behavior, and buyer organization scoping rules.
 
 ---
 

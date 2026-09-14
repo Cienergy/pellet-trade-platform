@@ -91,6 +91,7 @@ pellet-trade-platform/
 
 - **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
 - **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
+- **[Analytics and reporting](./docs/analytics-reporting.md)**: dashboard, BI, receivables, sales report, and CSV export route contracts.
 
 ---
 

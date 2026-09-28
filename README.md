@@ -91,6 +91,7 @@ pellet-trade-platform/
 
 - **[Order lifecycle](./docs/order-lifecycle.md)**: source-backed reference for order, batch, invoice, payment, credit, and dispatch state transitions.
 - **[RBAC policy](./docs/rbac.md)**: role gates and buyer organization scoping rules.
+- **[File uploads and storage](./docs/file-uploads.md)**: Supabase-backed payment proof and dispatch image upload contracts, setup, and troubleshooting.
 
 ---
 

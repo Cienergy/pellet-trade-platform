@@ -12,12 +12,13 @@ changing status transitions, payment gates, or Ops/Finance workflows.
 | Buyer order create/list | `pages/api/orders/index.js` |
 | Ops accept/reject | `pages/api/orders/[orderId]/accept.js`, `pages/api/orders/[orderId]/reject.js` |
 | Ops batch create and auto-invoice | `pages/api/orders/[orderId]/batches.js` |
-| Buyer payment proof | `pages/api/payments.js` |
+| Buyer payment record | `pages/api/payments.js` |
 | Finance payment verification | `pages/api/payments/[paymentId]/verify.js` |
 | Ops start processing | `pages/api/batches/[batchId]/start.js` |
 | Ops dispatch metadata | `pages/api/ops/dispatch.js` |
 | Ops batch completion | `pages/api/batches/[batchId]/complete.js` |
 | Dispatch timeline | `pages/api/ops/dispatch-timeline.js` |
+| Upload endpoints | `docs/file-uploads.md` |
 | Credit and overdue gates | `lib/creditCheck.js` |
 | Invoice org scoping | `lib/invoiceAccess.js` |
 
@@ -82,7 +83,7 @@ Notes:
    - The handler auto-generates invoice records and sets the batch to
      `INVOICED`.
 4. **Buyer uploads payment proof**.
-   - API: `POST /api/payments`
+   - APIs: `POST /api/uploads/payment-proof`, then `POST /api/payments`
    - Payment amount must exactly equal the invoice's remaining amount. Partial
      or excess payments are rejected.
 5. **Finance verifies payment**.
@@ -94,7 +95,7 @@ Notes:
    - API: `PATCH /api/batches/[batchId]/start`
    - The handler requires verified payment before setting `IN_PROGRESS`.
 7. **Ops dispatches and completes the batch**.
-   - API: `POST /api/ops/dispatch`, then
+   - APIs: `POST /api/uploads/dispatch-image`, `POST /api/ops/dispatch`, then
      `PATCH /api/batches/[batchId]/complete`
    - Dispatch image URL is required by the dispatch API.
    - Dispatch records `dispatchedAt`, `leftFromSiteAt`, committed/supplied MT,
